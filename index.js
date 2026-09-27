@@ -76,7 +76,7 @@ app.post('/assist', async (req, res) => {
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+        model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
         messages: [
           { role: 'system', content: `You are NOVA, a helpful personal assistant. Personality: ${process.env.NOVA_PERSONALITY || 'professional'}.` },
           { role: 'user', content: message }
