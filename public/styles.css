@@ -270,3 +270,130 @@ pre {
     flex-direction: column;
   }
 }
+
+
+/* NOVA Voice Core */
+.voice-console { margin-bottom: 1.25rem; }
+.voice-console-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+.voice-console-header h2 { margin:.15rem 0 0; }
+.voice-status { font-size:.82rem; padding:.55rem .8rem; border:1px solid rgba(148,163,184,.2); border-radius:999px; color:#94a3b8; background:rgba(15,23,42,.55); }
+.voice-status.ready { color:#86efac; border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.08); }
+.persona-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; }
+.persona-btn { border:1px solid rgba(96,165,250,.18); border-radius:16px; padding:.9rem 1rem; background:rgba(15,23,42,.65); color:#e2e8f0; text-align:left; cursor:pointer; transition:transform .2s ease,border-color .2s ease,background .2s ease,box-shadow .2s ease; font:inherit; }
+.persona-btn span { display:block; margin-top:.3rem; font-size:.75rem; color:#94a3b8; }
+.persona-btn:hover { transform:translateY(-1px); border-color:rgba(56,189,248,.5); }
+.persona-btn.active { border-color:rgba(56,189,248,.8); background:linear-gradient(135deg,rgba(14,116,144,.22),rgba(124,58,237,.18)); box-shadow:0 0 24px rgba(56,189,248,.08); }
+.persona-btn:disabled { opacity:.55; cursor:not-allowed; }
+@media (max-width: 620px) { .persona-grid { grid-template-columns:1fr; } .voice-console-header { align-items:flex-start; flex-direction:column; } }
+
+/* NOVA Attachments + Camera */
+.attachment-toolbar { display:flex; flex-wrap:wrap; gap:.7rem; margin-top:.8rem; }
+.tool-btn { display:inline-flex; align-items:center; gap:.45rem; padding:.7rem .9rem; border:1px solid rgba(96,165,250,.25); border-radius:12px; background:rgba(15,23,42,.72); color:#e2e8f0; cursor:pointer; font:inherit; font-weight:700; transition:transform .2s ease,border-color .2s ease,background .2s ease; }
+.tool-btn span { color:#94a3b8; font-size:.72rem; font-weight:500; }
+.tool-btn:hover { transform:translateY(-1px); border-color:rgba(56,189,248,.6); background:rgba(14,116,144,.12); }
+.muted-tool { color:#fca5a5; border-color:rgba(248,113,113,.25); }
+.attachment-preview { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:.75rem; margin-top:.8rem; }
+.attachment-card { position:relative; overflow:hidden; min-height:72px; padding:.7rem; border:1px solid rgba(96,165,250,.2); border-radius:12px; background:rgba(15,23,42,.6); }
+.attachment-card img { display:block; width:100%; max-height:130px; object-fit:cover; border-radius:8px; margin-bottom:.5rem; }
+.attachment-name { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.8rem; color:#e2e8f0; }
+.attachment-size { display:block; margin-top:.2rem; font-size:.7rem; color:#94a3b8; }
+.camera-modal { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:1rem; background:rgba(2,6,23,.78); backdrop-filter:blur(10px); }
+.camera-modal[hidden] { display:none; }
+.camera-card { width:min(680px,100%); padding:1rem; border:1px solid rgba(96,165,250,.3); border-radius:20px; background:#0b1220; box-shadow:0 25px 80px rgba(0,0,0,.45); }
+.camera-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.8rem; }
+.camera-header h3 { margin:0; }
+.camera-close { border:0; border-radius:10px; padding:.55rem .7rem; background:rgba(248,113,113,.1); color:#fca5a5; cursor:pointer; }
+#cameraPreview { display:block; width:100%; max-height:58vh; min-height:220px; object-fit:cover; border-radius:14px; background:#020617; }
+.camera-actions { display:flex; gap:.7rem; margin-top:.8rem; }
+.camera-message { margin:.7rem 0 0; color:#94a3b8; font-size:.78rem; }
+@media (max-width:620px) { .tool-btn { flex:1 1 calc(50% - .7rem); justify-content:center; } .camera-actions { flex-direction:column; } }
+
+
+/* NOVA Microphone */
+.mic-tool.listening {
+  border-color: rgba(248, 113, 113, .75);
+  background: rgba(248, 113, 113, .12);
+  box-shadow: 0 0 22px rgba(248, 113, 113, .12);
+  animation: novaMicPulse 1.25s ease-in-out infinite;
+}
+.mic-status {
+  margin-top: .55rem;
+  min-height: 1.1rem;
+  color: #94a3b8;
+  font-size: .76rem;
+}
+@keyframes novaMicPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+
+/* Live Voice upgrade */
+.live-tool.active {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.12);
+}
+.live-voice-status {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.72);
+}
+@media (max-width: 700px) {
+  .attachment-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tool-btn {
+    min-height: 52px;
+  }
+}
+
+
+/* Multimodal attachment tray */
+.attachment-card { position: relative; display: flex; align-items: center; gap: 10px; min-width: 190px; padding: 9px; }
+.attachment-card img { width: 52px; height: 52px; object-fit: cover; border-radius: 10px; }
+.attachment-file-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,255,255,0.06); font-size: 24px; }
+.attachment-meta { min-width: 0; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.attachment-remove { border: 0; background: transparent; color: inherit; opacity: .7; cursor: pointer; font-size: 15px; }
+.attachment-remove:hover { opacity: 1; }
+
+/* NOVA Command Center v8 */
+:root {
+  --azure: #38bdf8;
+  --azure-soft: rgba(56, 189, 248, .12);
+  --rail: rgba(3, 10, 24, .82);
+}
+body { align-items: flex-start; }
+.app-shell { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: calc(100vh - 64px); gap: 14px; }
+.command-rail { position: sticky; top: 18px; height: calc(100vh - 36px); padding: 18px 12px; border: 1px solid var(--border); border-radius: 22px; background: var(--rail); backdrop-filter: blur(18px); display: flex; flex-direction: column; }
+.rail-brand { display:flex; align-items:center; gap:10px; padding: 6px 8px 22px; }
+.rail-brand strong { display:block; letter-spacing:.12em; font-size:.95rem; }
+.rail-brand small { color:var(--muted); font-size:.55rem; letter-spacing:.16em; }
+.rail-orb { width:34px; height:34px; border-radius:12px; display:grid; place-items:center; background:linear-gradient(135deg,var(--azure),var(--purple)); font-weight:900; box-shadow:0 0 24px rgba(56,189,248,.3); }
+.rail-nav { display:grid; gap:7px; }
+.rail-btn { display:flex; align-items:center; gap:10px; width:100%; padding:11px 10px; border:1px solid transparent; border-radius:12px; background:transparent; color:var(--muted); cursor:pointer; text-align:left; font:inherit; }
+.rail-btn:hover, .rail-btn.active { color:var(--text); background:var(--azure-soft); border-color:rgba(56,189,248,.22); }
+.rail-btn span { font-size:.82rem; }
+.rail-footer { margin-top:auto; display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.72rem; padding:10px 8px; }
+.rail-footer .status-dot { width:8px; height:8px; }
+.app-content { min-width:0; }
+.voice-console { margin-bottom: 14px; }
+.workspace-strip { margin: 14px 0 4px; padding: 12px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px; border:1px solid rgba(56,189,248,.16); border-radius:12px; background:linear-gradient(90deg,rgba(56,189,248,.07),rgba(139,92,246,.05)); }
+.workspace-kicker { display:block; color:var(--muted); font-size:.58rem; letter-spacing:.16em; margin-bottom:3px; }
+.workspace-strip strong { font-size:.88rem; }
+.workspace-mode { white-space:nowrap; color:#7dd3fc; font-size:.65rem; letter-spacing:.12em; border:1px solid rgba(56,189,248,.25); padding:5px 8px; border-radius:999px; }
+.attachment-toolbar { margin-top:12px; }
+.attachment-toolbar .tool-btn { min-height:54px; }
+@media (max-width: 860px) {
+  body { padding: 14px 10px; }
+  .app-shell { grid-template-columns: 1fr; min-height:auto; }
+  .command-rail { position:sticky; top:8px; z-index:20; height:auto; padding:9px; flex-direction:row; align-items:center; gap:8px; }
+  .rail-brand { padding:3px 5px; margin-right:auto; }
+  .rail-nav { display:flex; overflow:auto; }
+  .rail-btn { width:auto; min-width:44px; justify-content:center; padding:9px; }
+  .rail-btn span { display:none; }
+  .rail-footer { display:none; }
+  .app-content { width:100%; }
+}

@@ -8,6 +8,31 @@
   </head>
   <body>
     <div class="app-shell">
+      <aside class="command-rail" aria-label="NOVA Command Center">
+        <div class="rail-brand"><span class="rail-orb">N</span><div><strong>NOVA</strong><small>COMMAND CENTER</small></div></div>
+        <nav class="rail-nav">
+          <button type="button" class="rail-btn active" data-target="assistantWorkspace">⌁<span>Assistant</span></button>
+          <button type="button" class="rail-btn" data-target="voiceWorkspace">◉<span>Voice Core</span></button>
+          <button type="button" class="rail-btn" data-target="attachmentsWorkspace">⌁<span>Files & Camera</span></button>
+          <button type="button" class="rail-btn" data-target="securityWorkspace">⌕<span>Security</span></button>
+        </nav>
+        <div class="rail-footer"><span class="status-dot"></span><span>Core online</span></div>
+      </aside>
+      <div class="app-content">
+      <section id="voiceWorkspace" class="voice-console panel" aria-label="NOVA voice console">
+        <div class="voice-console-header">
+          <div>
+            <p class="eyebrow">NOVA VOICE CORE</p>
+            <h2 id="activePersonaTitle">NOVA</h2>
+          </div>
+          <span id="voiceStatus" class="voice-status">Checking voice...</span>
+        </div>
+        <div class="persona-grid" role="group" aria-label="Choose NOVA persona">
+          <button type="button" class="persona-btn active" data-persona="nova">◉ NOVA<span>Adaptive</span></button>
+          <button type="button" class="persona-btn" data-persona="jarvis">◇ JARVIS<span>Strategic</span></button>
+          <button type="button" class="persona-btn" data-persona="friday">◇ FRIDAY<span>Conversational</span></button>
+        </div>
+      </section>
       <header class="topbar">
         <div class="brand-block">
           <span class="status-dot"></span>
@@ -44,17 +69,53 @@
           </article>
         </section>
 
-        <section class="panel controls-panel">
+        <section id="assistantWorkspace" class="panel controls-panel">
           <div class="panel-header">
             <h2>Ask NOVA</h2>
           </div>
           <form id="assistantForm">
             <textarea id="messageInput" rows="4" placeholder="Ask NOVA to create a project, summarize a task, or help with planning..."></textarea>
+
+            <div class="workspace-strip">
+              <div><span class="workspace-kicker">COMMAND WORKSPACE</span><strong>Talk, upload, capture, or go live</strong></div>
+              <span id="workspaceMode" class="workspace-mode">TEXT MODE</span>
+            </div>
+
+            <div id="attachmentsWorkspace" class="attachment-toolbar" aria-label="Attachments and camera">
+              <label for="fileInput" class="tool-btn">📎 Upload <span>Photos &amp; files</span></label>
+              <input id="fileInput" type="file" multiple accept="image/*,.pdf,.txt,.docx,.xlsx,.csv,.pptx" hidden />
+              <button type="button" id="cameraButton" class="tool-btn">📷 Camera <span>Capture photo</span></button>
+              <button type="button" id="micButton" class="tool-btn mic-tool" aria-pressed="false">🎤 Mic <span>Speak to NOVA</span></button>
+              <button type="button" id="liveVoiceButton" class="tool-btn live-tool" aria-pressed="false">🔴 Live Voice <span>Conversation off</span></button>
+              <button type="button" id="clearAttachments" class="tool-btn muted-tool" hidden>✕ Clear</button>
+            </div>
+
+            <div id="micStatus" class="mic-status" aria-live="polite">Microphone ready.</div>
+            <div id="liveVoiceStatus" class="live-voice-status" aria-live="polite">Live Voice is off. Turn it on for hands-free conversation.</div>
+            <div id="attachmentPreview" class="attachment-preview" aria-live="polite"></div>
+
             <div class="actions-row">
               <button type="submit" class="primary-btn">Send</button>
               <button type="button" id="predictButton" class="secondary-btn">Predict Intent</button>
+              <button type="button" id="speakButton" class="secondary-btn" disabled>🔊 Speak</button>
             </div>
           </form>
+
+          <div id="cameraModal" class="camera-modal" hidden>
+            <div class="camera-card">
+              <div class="camera-header">
+                <h3>Capture for NOVA</h3>
+                <button type="button" id="closeCamera" class="camera-close" aria-label="Close camera">✕</button>
+              </div>
+              <video id="cameraPreview" autoplay playsinline muted></video>
+              <canvas id="cameraCanvas" hidden></canvas>
+              <div class="camera-actions">
+                <button type="button" id="captureButton" class="primary-btn">📸 Capture</button>
+                <button type="button" id="switchCameraButton" class="secondary-btn">🔄 Switch</button>
+              </div>
+              <p id="cameraMessage" class="camera-message">Camera access is requested only when you press Camera.</p>
+            </div>
+          </div>
         </section>
 
         <section class="two-col">
@@ -67,7 +128,7 @@
             </div>
           </div>
 
-          <div class="panel scan-panel">
+          <div id="securityWorkspace" class="panel scan-panel">
             <div class="panel-header">
               <h2>Security Scan</h2>
             </div>
@@ -88,6 +149,7 @@
           </div>
         </section>
       </main>
+      </div>
     </div>
 
     <script src="/app.js"></script>
