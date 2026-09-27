@@ -1,0 +1,30 @@
+{
+  "name": "nova-ultimate",
+  "version": "1.0.0",
+  "description": "Advanced AI personal assistant with predictive intent, code generation, and mobile integration",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "llm",
+    "groq",
+    "predictive",
+    "code-generation",
+    "mobile",
+    "security"
+  ],
+  "author": "crimsonreign25-commits",
+  "license": "MIT"
+}
