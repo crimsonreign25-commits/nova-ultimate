@@ -1,0 +1,11 @@
+NOVA Ultimate v8 — Command Center
+
+This is a working-build patch. Do not upload to GitHub until the build has been tested.
+
+New in v8:
+- Unified Command Center navigation
+- Assistant / Voice Core / Files & Camera / Security workspace shortcuts
+- Mobile-friendly command rail
+- Workspace mode indicator (Text, Voice, Live Voice, Camera, Attachments)
+- Status version bumped to 8.0.0
+- Existing v7 multimodal/document/voice features preserved

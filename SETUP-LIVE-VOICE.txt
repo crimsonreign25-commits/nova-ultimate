@@ -1,0 +1,18 @@
+NOVA Ultimate — Live Voice Upgrade
+
+This build adds hands-free live voice conversation.
+
+Flow:
+1. Tap Live Voice.
+2. NOVA listens through the browser microphone.
+3. Your speech is converted to text.
+4. The text is sent to /assist with the selected persona.
+5. NOVA speaks the response through /speak.
+6. After speaking, NOVA listens again while Live Voice remains enabled.
+
+Browser note:
+- Microphone and audio playback permissions must be allowed.
+- SpeechRecognition support depends on the browser/device.
+- ElevenLabs must be configured on the backend for spoken replies.
+
+No GitHub deployment is required yet. Test locally first.

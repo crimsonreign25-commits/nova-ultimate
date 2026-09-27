@@ -1,0 +1,22 @@
+NOVA Ultimate v4 — Voice + Attachments + Microphone
+
+Replace these files in GitHub:
+- index.js
+- public/index.html
+- public/app.js
+- public/styles.css
+
+New microphone feature:
+- 🎤 Mic uses the browser's speech-recognition microphone when supported.
+- Tap Mic, speak, and the recognized text is inserted into the NOVA message box.
+- Tap Stop to finish listening.
+- The browser will ask for microphone permission when needed.
+
+Also included from v3:
+- NOVA / JARVIS / FRIDAY persona selector
+- ElevenLabs Speak button
+- Photo/file upload UI
+- Camera capture and camera switching
+- Attachment previews
+
+Important: browser microphone speech recognition support varies by browser. Chrome/Chromium-based browsers generally provide the best support. The current backend receives the resulting text; it does not upload raw microphone audio.

@@ -1,6 +1,6 @@
 {
   "name": "nova-ultimate",
-  "version": "1.0.0",
+  "version": "8.1.0",
   "description": "Advanced AI personal assistant with predictive intent, code generation, and mobile integration",
   "type": "module",
   "scripts": {
@@ -13,7 +13,11 @@
     "dotenv": "^16.3.1",
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5",
-    "@supabase/supabase-js": "^2.38.0"
+    "@supabase/supabase-js": "^2.38.0",
+    "adm-zip": "^0.5.16",
+    "mammoth": "^1.9.1",
+    "pdf-parse": "1.1.1",
+    "xlsx": "^0.18.5"
   },
   "keywords": [
     "ai",
