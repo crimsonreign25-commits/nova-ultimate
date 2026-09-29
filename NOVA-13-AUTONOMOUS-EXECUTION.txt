@@ -1,0 +1,27 @@
+NOVA Ultimate v13 — Autonomous Execution Layer
+
+Core flow:
+Goal -> Plan -> Execute -> Verify -> Recover
+
+New capabilities:
+- Dedicated autonomous executor state machine.
+- Execution checkpoints and richer job traces.
+- Bounded retries and adaptive replanning.
+- Verification-driven recovery.
+- Human approval gates for destructive/external-write/financial permissions.
+- Job approval endpoint: POST /api/jobs/:id/approve
+- Job cancellation remains available: POST /api/jobs/:id/cancel
+- Tool registry remains modular and open.
+- Guest/open-core operation remains available; account/cloud services are not required.
+
+Testing:
+- node --check index.js: PASS
+- node --check core/autonomous-executor.js: PASS
+- node --check core/agent-core.js: PASS
+- node --check core/job-engine.js: PASS
+- node --check public/app.js: PASS
+- adaptive-recovery tests: PASS
+- autonomous-v13 tests: PASS
+
+Live provider note:
+Groq, ElevenLabs and web research still require network access and configured API keys in the user's runtime.

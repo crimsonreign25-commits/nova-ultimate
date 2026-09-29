@@ -1,0 +1,24 @@
+NOVA Ultimate 9.0 — NEXT-GENERATION AGENT CORE
+
+This release moves NOVA beyond a dashboard imitation into an agentic execution interface.
+
+New:
+- Agent Core: Goal -> Plan -> Execute -> Verify workflow
+- /api/agent execution endpoint
+- Live execution trace and telemetry UI
+- Tool-aware planning for research, security, attachment analysis and solution building
+- Unified result panel with source counts, tool counts and elapsed time
+- Adaptive NOVA Intelligence Core state
+- Futuristic animated agent layer and execution graph styling
+- Version 9.0.0
+
+Runtime:
+- GROQ_API_KEY enables real AI reasoning/solution generation.
+- ELEVENLABS_API_KEY + voice IDs enable voice output.
+- Internet access is required for live web research and external AI providers.
+
+Start:
+  npm install
+  npm start
+Then open:
+  http://localhost:3000

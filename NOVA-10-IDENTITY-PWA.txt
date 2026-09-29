@@ -1,0 +1,26 @@
+NOVA 10.0 — Identity + Universal Install
+
+Guest mode:
+- NOVA is usable immediately without an account.
+- Guest data stays local to the browser/device.
+- Guest mode intentionally does not promise cross-device persistence.
+
+Full experience:
+- Configure SUPABASE_URL and SUPABASE_ANON_KEY in .env.
+- Users can create an account and sign in.
+- Authenticated sessions unlock the full NOVA experience and establish a portable identity.
+- The account layer is designed to be extended with server-side profile/memory sync using Supabase tables.
+
+Universal install:
+- NOVA is a Progressive Web App (PWA).
+- Supported browsers can install it to Android, iOS/iPadOS, Windows, macOS, Linux and compatible ChromeOS environments.
+- The same web app works responsively across phones, tablets and desktop browsers.
+- Service worker provides shell/offline resilience; AI/provider calls still require connectivity.
+
+Supabase Auth settings:
+1. Create a Supabase project.
+2. Enable Email/Password authentication.
+3. Put SUPABASE_URL and SUPABASE_ANON_KEY in .env.
+4. Configure the project's Site URL and redirect policy for the domain hosting NOVA.
+
+Important: do not expose a Supabase service-role key to the browser or commit it to the project.

@@ -1,0 +1,14 @@
+NOVA 17.0 — Reference UI
+
+The NOVA dashboard has been redesigned to closely match the supplied NOVA Ultimate reference:
+- futuristic dark blue / cyan glass interface
+- left command rail with NOVA branding and navigation
+- central NOVA intelligence hero with orbiting N-core
+- quick actions for Create, Research, Analyze, Code and More
+- large conversation workspace with multimodal composer
+- right-side Intelligence Core, System Status, Recent Chats, Quick Actions and Personas
+- six-card capability strip for Camera, File & Media, Live Voice, Memory, Tools and Personas
+- responsive mobile layout
+- optional desktop mobile-device preview on very wide screens
+
+All existing NOVA functionality and navigation targets are preserved. Advanced Agent, Builder, Command Center, Research, Security, Memory and Settings panels remain available below the primary reference dashboard.

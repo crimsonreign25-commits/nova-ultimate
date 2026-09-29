@@ -1,0 +1,17 @@
+NOVA ULTIMATE — FINAL BUILD
+
+This build is designed to operate like the supplied NOVA reference: the dashboard is the primary control surface and the Command Center executes research, security inspection, attachment analysis, and AI tasks from one workflow.
+
+START
+1. npm install
+2. copy .env.example .env
+3. Add GROQ_API_KEY for live AI responses.
+4. Optional: add ELEVENLABS_API_KEY plus NOVA_VOICE_ID/JARVIS_VOICE_ID/FRIDAY_VOICE_ID for server TTS.
+5. npm start
+6. Open http://localhost:3000
+
+IMPORTANT
+- Browser permissions are required for microphone and camera.
+- Web research requires server internet access.
+- API keys stay server-side in .env; never put them in public/app.js.
+- Local chat history and memory use browser localStorage in this build.

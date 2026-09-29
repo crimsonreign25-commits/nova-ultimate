@@ -141,3 +141,18 @@ vercel
 ## License
 
 MIT
+
+## NOVA 12.0 — Adaptive Recovery Core
+
+NOVA now uses a bounded recovery loop for autonomous jobs: failures are classified, transient/tool failures are retried with exponential backoff, repeated failures can trigger an alternative strategy, verification produces structured missing-step data, and jobs can be cancelled. Recovery is bounded by retry/replan limits to prevent loops.
+
+New core module: `core/recovery-engine.js`
+- failure classification: transient, input, permission, tool, verification
+- bounded retry policy
+- exponential backoff
+- alternative strategy selection
+- structured verification
+- circular-replanning guard
+
+New endpoint: `POST /api/jobs/:id/cancel`
+New status data: retries, replans, verification, recovery trace events.

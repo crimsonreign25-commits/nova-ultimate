@@ -1,0 +1,31 @@
+NOVA 14.0 — BUILDER / DEVELOPER MODE
+
+Goal
+Give NOVA a safe workspace-native development layer: inspect projects, plan changes, apply explicit file writes/patches, run safe syntax verification, and package artifacts.
+
+Safety
+- Every workspace is rooted under the local NOVA workspaces directory.
+- Relative path traversal and absolute paths are blocked.
+- File reads/writes have size limits.
+- Overwrites require an explicit overwrite flag.
+- Patch operations reject ambiguous matches unless all=true is explicitly requested.
+- No arbitrary shell command endpoint exists.
+- JavaScript checks use Node's allowlisted --check operation.
+
+Workflow
+Inspect → Plan → Apply → Test → Verify → Package
+
+API
+GET /api/builder/workspaces
+POST /api/builder/workspaces
+GET /api/builder/workspaces/:id
+GET /api/builder/workspaces/:id/files?path=.
+GET /api/builder/workspaces/:id/file?path=...
+POST /api/builder/workspaces/:id/file
+POST /api/builder/workspaces/:id/patch
+POST /api/builder/workspaces/:id/test
+POST /api/builder/workspaces/:id/plan
+POST /api/builder/workspaces/:id/package
+
+Known scope
+This milestone is a safe local builder foundation. It does not yet run arbitrary project-specific test commands, install dependencies, or edit external/cloud repositories. Those can be added later behind explicit capability/approval adapters.

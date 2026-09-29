@@ -1,0 +1,23 @@
+NOVA Ultimate v16 — Full Autonomous Core Build
+
+This build consolidates the current NOVA stack into one open, guest-first project:
+- futuristic PWA UI with chat, research, voice, camera, personas and local memory
+- autonomous Goal → Plan → Execute → Verify → Recover agent core
+- tool registry and bounded execution with approval gates
+- adaptive recovery, retries, replanning, cancellation and execution traces
+- sandboxed Builder Mode with multi-file edits
+- autonomous build → test → diagnose → repair → verify → rollback loop
+- durable job state in data/jobs.json
+- durable workspace .nova/manifest.json build history
+- safe project import from ZIP
+- safe file create/read/write/patch/move/delete operations
+- Node JavaScript syntax checks
+- allowlisted Python py_compile checks when Python is present
+- HTML structural checks
+- artifact ZIP packaging with SHA-256 hash
+- builder manifest/review information
+- web research, URL security heuristics and multimodal document/image assistance
+- optional Supabase accounts; guest mode remains available
+- no arbitrary shell execution
+
+External provider keys remain optional. Without them, the local/open core still boots and the UI remains usable, while model-powered responses, live voice and some research functions require their configured providers.

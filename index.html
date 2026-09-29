@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#020817" />
+  <meta name="description" content="NOVA Ultimate — a next-generation AI operating environment." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/nova-192.png" />
+  <title>NOVA Ultimate</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="nova-bg" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div class="app-shell">
+    <div id="accountGate" class="account-gate" hidden>
+      <div class="account-card">
+        <span class="agent-kicker">NOVA IDENTITY LAYER</span>
+        <h2>Unlock the full NOVA experience</h2>
+        <p>Use NOVA as a guest immediately, or create an account to carry your NOVA experience across devices.</p>
+        <div class="account-tabs"><button id="signInTab" class="active">Sign in</button><button id="signUpTab">Create account</button></div>
+        <form id="accountForm"><input id="accountEmail" type="email" placeholder="Email" autocomplete="email" required/><input id="accountPassword" type="password" placeholder="Password" minlength="8" autocomplete="current-password" required/><button class="agent-launch" type="submit" id="accountSubmit">Continue ↗</button></form>
+        <button id="continueGuest" class="ghost-btn">Continue as guest</button>
+        <div id="accountStatus" class="account-status"></div>
+      </div>
+    </div>
+    <aside class="command-rail" id="commandRail">
+      <div class="rail-brand"><div class="nova-logo">N</div><div><strong>NOVA</strong><small>THINK • CREATE • ACHIEVE</small></div></div>
+      <button class="new-chat" id="newChat"><span>＋</span> New Chat</button>
+      <nav class="rail-nav" aria-label="Main navigation">
+        <button class="rail-btn active" data-target="assistantWorkspace"><span class="rail-icon">◈</span><span>Chat</span></button>
+        <button class="rail-btn" data-target="historyPanel"><span class="rail-icon">◷</span><span>Chat History</span></button>
+        <button class="rail-btn" data-target="memoryPanel"><span class="rail-icon">♧</span><span>Memory</span></button>
+        <button class="rail-btn" data-target="toolsPanel"><span class="rail-icon">⌘</span><span>Tools</span></button>
+        <button class="rail-btn" data-target="researchPanel"><span class="rail-icon">⌕</span><span>Research</span></button>
+        <button class="rail-btn" data-target="attachmentsWorkspace"><span class="rail-icon">▣</span><span>Files</span></button>
+        <button class="rail-btn" data-target="voiceWorkspace"><span class="rail-icon">◉</span><span>Voice</span></button>
+        <button class="rail-btn" data-target="securityWorkspace"><span class="rail-icon">◇</span><span>Security</span></button>
+        <button class="rail-btn" data-target="commandPanel"><span class="rail-icon">⌘</span><span>Command Center</span></button><button class="rail-btn" data-target="agentPanel"><span class="rail-icon">✦</span><span>Agent Core</span></button><button class="rail-btn" data-target="builderPanel"><span class="rail-icon">⌘</span><span>Builder Mode</span></button><button class="rail-btn" data-target="settingsPanel"><span class="rail-icon">⚙</span><span>Settings</span></button>
+      </nav>
+      <div class="rail-persona">
+        <span class="tiny-label">ACTIVE PERSONA</span>
+        <button class="persona-mini" id="railPersona"><span class="mini-avatar">N</span><span><b id="railPersonaName">NOVA</b><small>Main Assistant</small></span><i>⌄</i></button>
+      </div>
+      <div class="rail-footer"><span class="status-dot"></span><span>System Online</span><em>v9.0.0</em></div>
+    </aside>
+
+    <div class="app-content">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu">☰</button>
+        <div class="top-context"><span class="top-orb">N</span><b>NOVA Ultimate</b><span class="online-pill">● Online</span></div>
+        <div class="top-actions">
+          <button class="icon-btn" id="globalSearch" title="Search">⌕</button>
+          <button class="icon-btn" id="notificationButton" title="Notifications">♢<span class="notification-dot"></span></button>
+          <button class="user-chip" id="profileButton"><span class="user-avatar">U</span><span id="profileName">Guest<small>Guest Mode</small></span><span>⌄</span></button>
+        </div>
+      </header>
+
+      <main class="dashboard reference-dashboard">
+        <div class="reference-grid">
+          <div class="center-stage">
+            <section class="hero panel reference-hero">
+              <div class="hero-art" aria-hidden="true">
+                <div class="planet-ring ring-a"></div><div class="planet-ring ring-b"></div><div class="planet-ring ring-c"></div>
+                <div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div>
+                <div class="core-glow"></div><div class="core-orb"><span>N</span></div>
+              </div>
+              <div class="hero-copy">
+                <p class="eyebrow">NOVA INTELLIGENCE CORE</p>
+                <h1>Good day, User <span>👋</span></h1>
+                <p>I'm NOVA, your next-generation AI assistant.<br/>What would you like to do today?</p>
+                <div class="hero-status"><span>● Memory Active</span><span>◉ Web Search Ready</span><span>◈ Tools Online</span></div>
+              </div>
+              <div class="hero-actions">
+                <button class="quick-card" data-prompt="Help me create"><b>✎</b><span>Create</span><small>Build anything</small></button>
+                <button class="quick-card" data-research="true"><b>⌕</b><span>Research</span><small>Get real-time info</small></button>
+                <button class="quick-card" data-prompt="Analyze this"><b>▧</b><span>Analyze</span><small>Images, files, data</small></button>
+                <button class="quick-card" data-prompt="Write code for"><b>⌁</b><span>Code</span><small>Write & debug</small></button>
+                <button class="quick-card" id="moreTools"><b>•••</b><span>More</span><small>Explore tools</small></button>
+              </div>
+            </section>
+
+            <section id="assistantWorkspace" class="panel chat-panel reference-chat">
+              <div class="chat-header"><div><span class="live-dot"></span><b>Conversation</b><small id="conversationLabel">NOVA is ready</small></div><button id="clearConversation" class="ghost-btn">Clear</button></div>
+              <div class="chat-feed" id="chatFeed"></div>
+              <div id="typingIndicator" class="typing-indicator" hidden><span></span><span></span><span></span> NOVA is thinking</div>
+              <form id="assistantForm" class="composer-form">
+                <textarea id="messageInput" rows="2" placeholder="Ask NOVA anything..."></textarea>
+                <div class="composer-tools" id="attachmentsWorkspace">
+                  <label for="fileInput" class="round-tool" title="Upload files">⌕</label>
+                  <input id="fileInput" type="file" multiple accept="image/*,.pdf,.txt,.docx,.xlsx,.csv,.pptx" hidden />
+                  <button type="button" id="cameraButton" class="round-tool" title="Camera">◉</button>
+                  <button type="button" id="micButton" class="round-tool" title="Microphone">♩</button>
+                  <button type="button" id="liveVoiceButton" class="live-chip">◉ Live Voice</button>
+                  <span id="workspaceMode" class="mode-pill">TEXT MODE</span>
+                  <button type="submit" id="sendButton" class="send-btn" aria-label="Send">➤</button>
+                </div>
+                <div id="micStatus" class="micro-status">Microphone ready.</div>
+                <div id="liveVoiceStatus" class="live-voice-status">Live Voice is off.</div>
+                <div id="attachmentPreview" class="attachment-preview"></div>
+                <button type="button" id="clearAttachments" class="clear-attachments" hidden>Clear attachments</button>
+              </form>
+            </section>
+
+            <div class="advanced-stack">
+              <section class="lower-grid">
+                <section id="researchPanel" class="panel feature-panel">
+                  <div class="panel-title"><span>◎</span><div><b>Research</b><small>Web Search</small></div><i id="researchState">Ready</i></div>
+                  <p>Search the web, open results, summarize sources and bring findings into your conversation.</p>
+                  <div class="research-row"><input id="researchInput" placeholder="Search the web..."/><button id="researchButton" class="feature-action">Search →</button></div>
+                  <div id="researchResults" class="research-results"></div>
+                </section>
+                <section id="toolsPanel" class="panel feature-panel">
+                  <div class="panel-title"><span>⌁</span><div><b>Tools & Features</b><small>Execution layer</small></div><i>Online</i></div>
+                  <div class="tool-grid">
+                    <button data-tool="web">Web Search</button><button data-tool="code">Code</button><button data-tool="image">Image Analysis</button><button data-tool="pdf">PDF Reader</button><button data-tool="calculator">Calculator</button><button data-tool="automation">Automation</button>
+                  </div>
+                  <div id="toolOutput" class="tool-output">Choose a tool to run it in the workspace.</div>
+                </section>
+              </section>
+
+              <section id="memoryPanel" class="panel memory-panel">
+                <div class="panel-title"><span>♧</span><div><b>Memory & Conversation Context</b><small>Personalized context</small></div><i>Active</i></div>
+                <div class="memory-grid"><div><strong id="memoryCount">0</strong><span>saved memories</span></div><div><strong id="historyCount">0</strong><span>conversations</span></div><div><strong id="messageCount">0</strong><span>messages</span></div></div>
+                <div id="memoryItems" class="memory-items"></div>
+                <div class="memory-actions"><button id="saveMemory">Save current topic</button><button id="clearMemory" class="danger-btn">Clear local memory</button></div>
+              </section>
+
+              <section id="securityWorkspace" class="panel security-panel">
+                <div class="panel-title"><span>◇</span><div><b>Security Center</b><small>URL inspection</small></div><i>Online</i></div>
+                <form id="scanForm"><input id="scanInput" type="text" placeholder="https://example.com"/><button class="secondary-btn" type="submit">Scan URL</button></form>
+                <pre id="scanResult">Awaiting scan...</pre>
+              </section>
+
+              <section id="agentPanel" class="panel agent-panel">
+                <div class="agent-topline"><div><span class="agent-kicker">NOVA AUTONOMOUS CORE</span><h2>Goal → Plan → Execute → Verify</h2><p>Give NOVA an objective. The agent decomposes it, invokes the right capabilities, tracks execution, and returns a unified result.</p></div><div class="agent-pulse"><span></span><b id="agentLiveState">STANDBY</b><small id="agentDuration">0ms</small></div></div>
+                <form id="agentForm" class="agent-form"><input id="agentInput" placeholder="e.g. Research quantum battery advances, compare the latest findings, and give me an actionable summary…"/><button class="agent-launch" type="submit">Launch NOVA ↗</button></form>
+                <div class="agent-metrics"><span><b id="agentStepCount">0</b> steps</span><span><b id="agentToolCount">0</b> tools</span><span><b id="agentSourceCount">0</b> sources</span><span><b id="agentElapsed">0.0</b>s</span></div>
+                <div id="agentTrace" class="agent-trace"><div class="agent-empty">Awaiting an objective. NOVA will build the execution graph here.</div></div>
+                <div id="agentResult" class="agent-result" hidden></div>
+              </section>
+
+              <section id="builderPanel" class="panel builder-panel">
+                <div class="agent-topline"><div><span class="agent-kicker">NOVA BUILDER MODE</span><h2>Inspect → Change → Test → Package</h2><p>Build inside a sandboxed NOVA workspace. File writes are explicit, paths are guarded, and code checks use safe allowlisted runners.</p></div><div class="builder-badge">SANDBOXED</div></div>
+                <div class="builder-toolbar"><button id="builderCreate" class="primary-btn">+ New Workspace</button><select id="builderWorkspace"><option value="">Select workspace…</option></select><button id="builderRefresh" class="secondary-btn">Refresh</button><button id="builderImport" class="secondary-btn">Import ZIP</button><input id="builderImportInput" type="file" accept=".zip,application/zip" hidden /></div>
+                <form id="builderPlanForm" class="command-form"><input id="builderGoal" placeholder="What should NOVA build or change?"/><button class="secondary-btn" type="submit">Plan</button><button id="builderBuildBtn" class="primary-btn" type="button">Autonomous Build ↗</button></form>
+                <div class="builder-grid"><div><div class="section-mini">WORKSPACE FILES</div><div id="builderFiles" class="builder-files">Select a workspace.</div></div><div><div class="section-mini">TEST / VERIFICATION</div><pre id="builderTest">Awaiting test run…</pre></div></div>
+                <div class="builder-actions"><button id="builderTestBtn" class="secondary-btn">Run Safe Tests</button><button id="builderManifestBtn" class="secondary-btn">View Manifest</button><button id="builderPackageBtn" class="primary-btn">Package Artifact</button></div>
+                <pre id="builderPlan" class="builder-plan">Builder plan will appear here.</pre>
+              </section>
+
+              <section id="commandPanel" class="panel command-panel">
+                <div class="panel-title"><span>⌘</span><div><b>Command Center</b><small>Plan, execute and monitor NOVA workflows</small></div><i id="commandState">Ready</i></div>
+                <div class="command-presets">
+                  <button data-command="research">Research & summarize</button><button data-command="analyze">Analyze attachments</button><button data-command="code">Build a solution</button><button data-command="security">Inspect a URL</button>
+                </div>
+                <form id="commandForm" class="command-form"><input id="commandInput" placeholder="Describe a task for NOVA to execute…"/><button class="primary-btn" type="submit">Execute</button></form>
+                <div id="commandSteps" class="command-steps"></div>
+              </section>
+
+              <section id="settingsPanel" class="panel settings-panel">
+                <div class="panel-title"><span>⚙</span><div><b>Settings</b><small>NOVA configuration</small></div></div>
+                <div class="settings-row"><span>System theme</span><b>Dark • Neon</b></div><div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>17.0.0</b></div>
+              </section>
+            </div>
+          </div>
+
+          <aside class="right-column reference-sidebar">
+            <section class="panel intelligence-panel">
+              <div class="side-heading"><b>NOVA Intelligence Core</b><span id="thinkingState">● Thinking</span></div>
+              <div class="brain-orb"><span>♧</span><i></i><b></b></div>
+              <div class="core-signal" id="coreSignal">READY • AWAITING OBJECTIVE</div><ul id="coreStages"><li>✓ Understanding</li><li>✓ Planning</li><li>✓ Tool selection</li><li>✓ Executing</li><li>✓ Verifying</li></ul>
+            </section>
+            <section class="panel system-panel">
+              <div class="side-heading"><b>System Status</b><span class="good">● Operational</span></div>
+              <div class="status-list"><span>◉ Groq (AI)<b id="groqStatus">Checking...</b></span><span>◉ ElevenLabs (Voice)<b id="voiceStatus">Checking...</b></span><span>◉ Memory (Chat)<b>Active</b></span><span>◉ Tools<b>Online</b></span></div>
+            </section>
+            <section id="historyPanel" class="panel history-panel">
+              <div class="side-heading"><b>Recent Chats</b><button id="viewAllHistory" class="link-btn">View All</button></div>
+              <div id="historyList" class="history-list"></div>
+            </section>
+            <section class="panel quick-actions">
+              <div class="side-heading"><b>Quick Actions</b></div>
+              <div class="action-grid"><button id="takePhoto">◉<span>Take Photo</span></button><button id="uploadFile">▣<span>Upload File</span></button><button data-prompt="Create a plan for">☷<span>Plan</span></button><button data-prompt="Analyze this">◈<span>Analyze</span></button></div>
+            </section>
+            <section id="voiceWorkspace" class="panel persona-panel">
+              <div class="side-heading"><b>Personas</b></div>
+              <div class="persona-grid"><button type="button" class="persona-btn active" data-persona="nova"><span class="persona-avatar">N</span><span><b>NOVA</b><small>Best for general use</small></span><i>✓</i></button><button type="button" class="persona-btn" data-persona="jarvis"><span class="persona-avatar">J</span><span><b>JARVIS</b><small>Advanced & technical</small></span><i></i></button><button type="button" class="persona-btn" data-persona="friday"><span class="persona-avatar">F</span><span><b>FRIDAY</b><small>Creative & helpful</small></span><i></i></button></div>
+              <div class="persona-tools"><span>Active: <b id="activePersonaTitle">NOVA</b></span><button id="speakButton" disabled>🔊 Speak</button></div>
+            </section>
+          </aside>
+        </div>
+
+        <section class="capability-strip" aria-label="NOVA capabilities">
+          <article class="capability-card camera-capability">
+            <div class="capability-title"><span>◉</span><b>Camera</b><small>Front & Back</small></div>
+            <div class="capability-visuals"><div class="camera-thumb landscape"><span>◒</span></div><div class="camera-thumb portrait"><span>N</span></div></div>
+            <button data-action="camera">Open Vision</button>
+          </article>
+          <article class="capability-card files-capability">
+            <div class="capability-title"><span>▣</span><b>File & Media</b><small>Attachments</small></div>
+            <div class="file-chips"><span>IMG</span><span>PDF</span><span>DOCX</span><span>ZIP</span><strong>＋</strong></div>
+            <p>Images, documents, spreadsheets and project files.</p>
+            <button data-action="upload">Upload File</button>
+          </article>
+          <article class="capability-card voice-capability">
+            <div class="capability-title"><span>♩</span><b>Live Voice</b><small>Microphone</small></div>
+            <div class="waveform"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="voice-state">Ready to listen</div>
+            <button data-action="voice">Start Live Voice</button>
+          </article>
+          <article class="capability-card memory-capability">
+            <div class="capability-title"><span>♧</span><b>Memory & Context</b><small>Personalized</small></div>
+            <ul><li>Remembers conversations</li><li>Understands preferences</li><li>Builds on past context</li><li>Local-first memory</li></ul>
+            <button data-target="memoryPanel">Open Memory</button>
+          </article>
+          <article class="capability-card tools-capability">
+            <div class="capability-title"><span>⌁</span><b>Tools & Features</b><small>Execution layer</small></div>
+            <div class="mini-tool-grid"><button data-tool="web">Web</button><button data-tool="code">Code</button><button data-tool="image">Vision</button><button data-tool="pdf">PDF</button><button data-tool="calculator">Calc</button><button data-tool="automation">Automation</button></div>
+            <button data-target="toolsPanel">Explore Tools</button>
+          </article>
+          <article class="capability-card personas-capability">
+            <div class="capability-title"><span>✦</span><b>Personas</b><small>Choose NOVA's mode</small></div>
+            <div class="persona-pills"><button data-persona="nova"><span>N</span>NOVA</button><button data-persona="jarvis"><span>J</span>JARVIS</button><button data-persona="friday"><span>F</span>FRIDAY</button></div>
+            <button data-target="voiceWorkspace">Switch Persona</button>
+          </article>
+        </section>
+
+        <div class="mobile-preview" aria-hidden="true">
+          <div class="mobile-speaker"></div><div class="mobile-screen">
+            <div class="mobile-top"><span>☰</span><b>NOVA</b><span>●</span></div>
+            <div class="mobile-orb"><span>N</span></div>
+            <strong>Good day, User 👋</strong><small>I'm NOVA, your next-generation AI assistant.</small><em>● Online</em>
+            <div class="mobile-actions"><span>✎</span><span>⌕</span><span>▧</span><span>⌁</span></div>
+            <div class="mobile-bubble user">Help me build a website.</div><div class="mobile-bubble nova">Absolutely! Let's build it together.</div>
+            <div class="mobile-composer">Type a message… <b>➤</b></div><div class="mobile-nav"><span>Chat</span><span>Memory</span><span>Tools</span><span>More</span></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="camera-modal" id="cameraModal" hidden>
+    <div class="camera-card"><div class="camera-header"><h3>NOVA Vision</h3><button id="closeCamera">✕</button></div><video id="cameraPreview" autoplay playsinline></video><canvas id="cameraCanvas" hidden></canvas><div class="camera-actions"><button id="captureButton" class="primary-btn">Capture</button><button id="switchCameraButton" class="secondary-btn">Switch camera</button></div><p id="cameraMessage" class="camera-message">Camera ready.</p></div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
