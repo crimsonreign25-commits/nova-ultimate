@@ -1,7 +1,7 @@
 {
   "name": "nova-ultimate",
-  "version": "17.0.0",
-  "description": "Open, guest-first next-generation AI assistant with autonomous execution, adaptive recovery, and sandboxed software development.",
+  "version": "21.0.0",
+  "description": "Open, guest-first next-generation AI assistant with persistent conversations, visible execution, creator access control, autonomous execution and sandboxed software development.",
   "type": "module",
   "scripts": {
     "start": "node index.js",

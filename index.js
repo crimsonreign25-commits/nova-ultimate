@@ -6,15 +6,16 @@ import { dirname, join, basename } from 'path';
 import { promises as fs } from 'node:fs';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
-import { PredictionEngine } from './prediction-engine.js';
-import { Orchestrator } from './orchestrator.js';
+import { PredictionEngine } from './core/prediction-engine.js';
+import { Orchestrator } from './core/orchestrator.js';
 import { MobileGuard } from './security/mobile-guard.js';
-import { AgentCore } from './agent-core.js';
-import { ToolRegistry } from './tool-registry.js';
-import { JobEngine } from './job-engine.js';
-import { AutonomousExecutor } from './autonomous-executor.js';
-import { WorkspaceManager } from './workspace-manager.js';
-import { BuilderEngine } from './builder-engine.js';
+import { AgentCore } from './core/agent-core.js';
+import { ToolRegistry } from './core/tool-registry.js';
+import { JobEngine } from './core/job-engine.js';
+import { AutonomousExecutor } from './core/autonomous-executor.js';
+import { WorkspaceManager } from './core/workspace-manager.js';
+import { BuilderEngine } from './core/builder-engine.js';
+import { PersistentStore } from './core/persistent-store.js';
 import AdmZip from 'adm-zip';
 import mammoth from 'mammoth';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
@@ -35,7 +36,10 @@ const jobs = new JobEngine({ maxJobs: 100 });
 const autonomous = new AutonomousExecutor({ agent: agentCore, jobs, tools, maxReplans: 2, maxSteps: 12, approvalRequired: true });
 const workspace = new WorkspaceManager({ root: join(__dirname, 'workspaces') });
 const builder = new BuilderEngine({ workspace });
+const store = new PersistentStore({ root: join(__dirname, 'data', 'nova-store') });
 await workspace.init();
+await store.init();
+const autonomousTasks = new Map();
 
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -137,7 +141,7 @@ async function extractAttachmentText(item) {
 
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
-app.use(express.static(__dirname));
+app.use(express.static(join(__dirname, 'public')));
 
 // Optional account layer: guests can use NOVA immediately; configured Supabase
 // accounts unlock the full experience and can be used across devices.
@@ -195,17 +199,21 @@ app.get('/api/auth/me', requireUser, (req, res) => res.json({ authenticated: tru
 
 
 app.get('/', (_req, res) => {
-  res.sendFile(join(__dirname, 'index.html'));
+  res.sendFile(join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+function roleFor(req){ const creator=process.env.NOVA_CREATOR_TOKEN && String(req.headers['x-nova-creator-token']||'')===String(process.env.NOVA_CREATOR_TOKEN); if(creator)return 'creator'; const viewer=process.env.NOVA_VIEWER_TOKEN && String(req.headers['x-nova-viewer-token']||'')===String(process.env.NOVA_VIEWER_TOKEN); return viewer?'viewer':'user'; }
+function requireAdvanced(req,res,next){ const role=roleFor(req); if(role==='creator'||role==='viewer'){req.novaRole=role;return next();} return res.status(403).json({error:'This NOVA capability is restricted to authorized users.'}); }
+function requireCreator(req,res,next){ if(roleFor(req)!=='creator')return res.status(403).json({error:'Creator authorization is required for this action.'}); req.novaRole='creator'; next(); }
+
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
-    version: '17.0.0',
+    version: '21.0.0',
     status: 'operational',
-    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview'],
+    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','read-only-restricted-access','access-audit'],
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
     voiceConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
     personas: ['nova', 'jarvis', 'friday']
@@ -272,6 +280,8 @@ app.post('/assist', async (req, res) => {
   }
 
   prediction.observe(user_id, message);
+  const saved = await store.getConversation(String(user_id), String(req.body?.conversation_id||''));
+  const recentContext = saved?.messages?.slice(-12).map(m=>({role:m.role,content:m.text})) || [];
   if (!process.env.GROQ_API_KEY) {
     return res.json({
       response: 'NOVA Ultimate is online. Add GROQ_API_KEY in Render to enable AI responses.',
@@ -337,10 +347,7 @@ app.post('/assist', async (req, res) => {
       },
       body: JSON.stringify({
         model,
-        messages: [
-          { role: 'system', content: systemText },
-          { role: 'user', content: userContent }
-        ],
+        messages: [{ role: 'system', content: systemText }, ...recentContext.filter(m=>m.role==='user'||m.role==='nova').map(m=>({role:m.role==='nova'?'assistant':'user',content:m.content})), { role: 'user', content: userContent }],
         temperature: 0.7
       })
     });
@@ -362,18 +369,30 @@ app.post('/assist', async (req, res) => {
 
 
 
-app.get('/api/builder/workspaces', async (_req, res) => {
+app.get('/api/chat', async (req,res)=>{ try{const userId=String(req.query.user_id||'mobile-user');res.json({conversations:await store.listConversations(userId)});}catch(e){res.status(500).json({error:e.message})} });
+app.get('/api/chat/:id', async (req,res)=>{ try{const userId=String(req.query.user_id||'mobile-user');const item=await store.getConversation(userId,req.params.id);if(!item)return res.status(404).json({error:'Conversation not found'});res.json(item);}catch(e){res.status(500).json({error:e.message})} });
+app.post('/api/chat', async (req,res)=>{ try{const userId=String(req.body?.user_id||'mobile-user');const item=await store.saveConversation(userId,req.body||{});res.json(item);}catch(e){res.status(400).json({error:e.message})} });
+app.delete('/api/chat/:id', async (req,res)=>{ try{const userId=String(req.query.user_id||'mobile-user');await store.deleteConversation(userId,req.params.id);res.json({ok:true});}catch(e){res.status(500).json({error:e.message})} });
+app.post('/api/access/request', async (req,res)=>{try{const item=await store.addAccessRequest({userId:String(req.body?.user_id||'anonymous'),resource:String(req.body?.resource||'advanced'),reason:String(req.body?.reason||'User requested restricted NOVA information.')});res.status(201).json({ok:true,request:item,notifyCreator:Boolean(process.env.NOVA_CREATOR_TOKEN)});}catch(e){res.status(500).json({error:e.message})}});
+app.get('/api/access/requests', requireCreator, async (_req,res)=>res.json({requests:await store.listAccess()}));
+app.post('/api/access/requests/:id/decision', requireCreator, async (req,res)=>{const decision=['approved','denied'].includes(req.body?.decision)?req.body.decision:'denied';const item=await store.decideAccess(req.params.id,decision,'creator');if(!item)return res.status(404).json({error:'Access request not found'});res.json({ok:true,request:item});});
+app.get('/api/access/audit', requireCreator, async (_req,res)=>res.json({audit:await store.listAudit()}));
+
+app.get('/api/autonomous-progress/:id', (req,res)=>{const task=autonomousTasks.get(req.params.id);if(!task)return res.status(404).json({error:'Task not found'});res.json(task);});
+app.get('/api/autonomous-download/:id',(req,res)=>{const task=autonomousTasks.get(req.params.id);const file=task?.result?.artifact?.path;if(!task||task.status!=='completed'||!file)return res.status(404).json({error:'Verified result not available'});res.download(file,basename(file));});
+
+app.get('/api/builder/workspaces', requireAdvanced, async (_req, res) => {
   try { const entries = await fs.readdir(workspace.root, { withFileTypes:true }); res.json({ workspaces: entries.filter(e=>e.isDirectory()).map(e=>({id:e.name})) }); }
   catch (error) { res.status(500).json({error:error.message}); }
 });
-app.post('/api/builder/workspaces', async (req,res) => { try { const item=await workspace.create(req.body?.name || 'nova-project'); res.status(201).json(item); } catch(error){ res.status(400).json({error:error.message}); } });
-app.get('/api/builder/workspaces/:id', async (req,res) => { try { res.json(await builder.inspect(req.params.id)); } catch(error){ res.status(404).json({error:error.message}); } });
-app.get('/api/builder/workspaces/:id/files', async (req,res) => { try { res.json({items:await workspace.list(req.params.id, req.query.path || '.')}); } catch(error){ res.status(404).json({error:error.message}); } });
-app.get('/api/builder/workspaces/:id/file', async (req,res) => { try { res.json({path:req.query.path,content:await workspace.read(req.params.id, req.query.path)}); } catch(error){ res.status(400).json({error:error.message}); } });
-app.post('/api/builder/workspaces/:id/file', async (req,res) => { try { const out=await workspace.write(req.params.id, req.body?.path, req.body?.content, {overwrite:Boolean(req.body?.overwrite)}); res.json({ok:true,...out}); } catch(error){ res.status(400).json({error:error.message}); } });
-app.post('/api/builder/workspaces/:id/patch', async (req,res) => { try { const out=await workspace.patch(req.params.id, req.body?.path, req.body?.find, req.body?.replace, {all:Boolean(req.body?.all)}); res.json({ok:true,...out}); } catch(error){ res.status(400).json({error:error.message}); } });
-app.post('/api/builder/workspaces/:id/test', async (req,res) => { try { res.json(await builder.test(req.params.id)); } catch(error){ res.status(400).json({error:error.message}); } });
-app.post('/api/builder/workspaces/:id/build', async (req,res) => {
+app.post('/api/builder/workspaces', requireCreator, async (req,res) => { try { const item=await workspace.create(req.body?.name || 'nova-project'); res.status(201).json(item); } catch(error){ res.status(400).json({error:error.message}); } });
+app.get('/api/builder/workspaces/:id', requireAdvanced, async (req,res) => { try { res.json(await builder.inspect(req.params.id)); } catch(error){ res.status(404).json({error:error.message}); } });
+app.get('/api/builder/workspaces/:id/files', requireAdvanced, async (req,res) => { try { res.json({items:await workspace.list(req.params.id, req.query.path || '.')}); } catch(error){ res.status(404).json({error:error.message}); } });
+app.get('/api/builder/workspaces/:id/file', requireAdvanced, async (req,res) => { try { res.json({path:req.query.path,content:await workspace.read(req.params.id, req.query.path)}); } catch(error){ res.status(400).json({error:error.message}); } });
+app.post('/api/builder/workspaces/:id/file', requireCreator, async (req,res) => { try { const out=await workspace.write(req.params.id, req.body?.path, req.body?.content, {overwrite:Boolean(req.body?.overwrite)}); res.json({ok:true,...out}); } catch(error){ res.status(400).json({error:error.message}); } });
+app.post('/api/builder/workspaces/:id/patch', requireCreator, async (req,res) => { try { const out=await workspace.patch(req.params.id, req.body?.path, req.body?.find, req.body?.replace, {all:Boolean(req.body?.all)}); res.json({ok:true,...out}); } catch(error){ res.status(400).json({error:error.message}); } });
+app.post('/api/builder/workspaces/:id/test', requireCreator, async (req,res) => { try { res.json(await builder.test(req.params.id)); } catch(error){ res.status(400).json({error:error.message}); } });
+app.post('/api/builder/workspaces/:id/build', requireCreator, async (req,res) => {
   try {
     const id=req.params.id; const goal=String(req.body?.goal || '').trim();
     if(!goal) return res.status(400).json({error:'goal is required'});
@@ -401,17 +420,48 @@ app.post('/api/builder/workspaces/:id/build', async (req,res) => {
     res.json(result);
   } catch(error){ res.status(400).json({error:error.message,trace:error.builderTrace||null}); }
 });
-app.post('/api/builder/workspaces/:id/plan', async (req,res) => { try { res.json(await builder.buildPlan(req.params.id, req.body?.goal)); } catch(error){ res.status(400).json({error:error.message}); } });
-app.post('/api/builder/workspaces/:id/package', async (req,res) => { try { const artifact=await workspace.package(req.params.id); res.download(artifact.path, basename(artifact.path)); } catch(error){ res.status(400).json({error:error.message}); } });
-app.get('/api/builder/workspaces/:id/manifest', async (req,res) => { try { res.json(await workspace.readManifest(req.params.id)); } catch(error){ res.status(404).json({error:error.message}); } });
-app.post('/api/builder/workspaces/:id/import', async (req,res) => { try { const data=String(req.body?.data||''); if(!data.startsWith('data:application/zip;base64,')) return res.status(400).json({error:'ZIP data URL required'}); const buffer=Buffer.from(data.split(',')[1],'base64'); if(buffer.length>25*1024*1024) return res.status(413).json({error:'Import is limited to 25MB.'}); const tmp=join(os.tmpdir(),`nova-import-${Date.now()}-${Math.random().toString(16).slice(2)}.zip`); await fs.writeFile(tmp,buffer); try { const out=await workspace.importZip(req.params.id,tmp); res.json({ok:true,...out}); } finally { await fs.rm(tmp,{force:true}); } } catch(error){ res.status(400).json({error:error.message}); } });
-app.post('/api/builder/workspaces/:id/delete', async (req,res) => { try { res.json({ok:true,...await workspace.remove(req.params.id,req.body?.path)}); } catch(error){ res.status(400).json({error:error.message}); } });
-app.post('/api/builder/workspaces/:id/move', async (req,res) => { try { res.json({ok:true,...await workspace.move(req.params.id,req.body?.from,req.body?.to)}); } catch(error){ res.status(400).json({error:error.message}); } });
-app.get('/api/tools', (_req, res) => res.json({ tools: tools.describe() }));
-app.get('/api/jobs', (_req, res) => res.json({ jobs: jobs.list() }));
-app.get('/api/jobs/:id', (req, res) => { const job=jobs.get(req.params.id); if(!job) return res.status(404).json({error:'Job not found'}); res.json(job); });
+app.post('/api/autonomous-build', async (req,res)=>{
+  const {goal='',user_id='mobile-user',persona='nova',name='nova-task'}=req.body||{};
+  if(!String(goal).trim())return res.status(400).json({error:'goal is required'});
+  const id=`task-${Date.now()}-${Math.random().toString(16).slice(2,8)}`;
+  autonomousTasks.set(id,{id,status:'running',phase:'understanding',progress:[{key:'understanding',label:'Understanding your request',status:'active'}],createdAt:new Date().toISOString()});
+  const setPhase=(key,label)=>{const t=autonomousTasks.get(id);if(!t)return;t.progress=t.progress.map(x=>({...x,status:x.key===key?'active':(x.status==='active'?'done':x.status)}));if(!t.progress.some(x=>x.key===key))t.progress.push({key,label,status:'active'});t.phase=key;};
+  const finish=(ok,result,error)=>{const t=autonomousTasks.get(id);if(!t)return;t.progress=t.progress.map(x=>({...x,status:x.status==='active'?'done':x.status}));t.status=ok?'completed':'failed';t.phase=ok?'ready':'failed';t.result=result||null;t.error=error||null;t.completedAt=new Date().toISOString();};
+  res.status(202).json({ok:true,taskId:id});
+  (async()=>{let workspaceId=null;try{
+    setPhase('planning','Planning the solution');
+    if(!process.env.GROQ_API_KEY)throw new Error('GROQ_API_KEY is required for autonomous building.');
+    workspaceId=(await workspace.create(String(name).replace(/[^a-zA-Z0-9_-]+/g,'-').slice(0,40)||'nova-task')).id;
+    setPhase('creating','Creating files');
+    const model=process.env.GROQ_MODEL||'openai/gpt-oss-20b';
+    const prompt=`Return ONLY JSON with a changes array. Build this goal from scratch in a safe NOVA sandbox. Each item must be {path,content}. No secrets, shell scripts, CI credentials, absolute paths, or files outside the workspace. Keep the implementation small and testable. Goal: ${String(goal).slice(0,8000)}`;
+    const first=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.GROQ_API_KEY}`},body:JSON.stringify({model,messages:[{role:'system',content:'You are NOVA Builder. Output strict JSON only.'},{role:'user',content:prompt}],temperature:0.2})});
+    const firstData=await first.json();if(!first.ok)throw new Error(firstData.error?.message||'Groq build generation failed');
+    const raw=firstData.choices?.[0]?.message?.content||'{}';const parsed=JSON.parse(raw.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim());
+    setPhase('building','Building the solution');
+    const result=await builder.autonomousBuild(workspaceId,{goal,changes:Array.isArray(parsed.changes)?parsed.changes:[],repair:async({diagnosis,test,inspect,round})=>{setPhase('fixing','Fixing an issue');const repairPrompt=`Return ONLY JSON {"changes":[{"path":"...","content":"..."}]}. Repair the sandbox build. Goal: ${goal}
+Round: ${round}
+Diagnosis: ${JSON.stringify(diagnosis)}
+Test: ${JSON.stringify(test)}
+Inspect: ${JSON.stringify(inspect)}`;const rr=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.GROQ_API_KEY}`},body:JSON.stringify({model,messages:[{role:'system',content:'You are NOVA repair engineer. Output strict JSON only.'},{role:'user',content:repairPrompt}],temperature:0.1})});const rd=await rr.json();if(!rr.ok)throw new Error(rd.error?.message||'Repair generation failed');const txt=rd.choices?.[0]?.message?.content||'{}';return JSON.parse(txt.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim());}});
+    setPhase('testing','Testing');setPhase('verifying','Verifying');
+    if(!result.ok)throw new Error('Verification failed; sandbox was rolled back.');
+    finish(true,{goal,workspaceId,artifact:result.artifact,rounds:result.rounds,summary:'NOVA implemented, tested, repaired when needed, verified, and packaged the result.'});
+    await store.audit({actor:String(user_id),action:'autonomous-build',resource:workspaceId,result:'completed',taskId:id});
+  }catch(error){finish(false,{workspaceId},error.message);await store.audit({actor:String(user_id),action:'autonomous-build',resource:workspaceId||'sandbox',result:'failed',taskId:id});}})();
+});
 
-app.post('/api/agent', async (req, res) => {
+app.post('/api/builder/workspaces/:id/plan', requireCreator, async (req,res) => { try { res.json(await builder.buildPlan(req.params.id, req.body?.goal)); } catch(error){ res.status(400).json({error:error.message}); } });
+app.post('/api/builder/workspaces/:id/package', requireCreator, async (req,res) => { try { const artifact=await workspace.package(req.params.id); res.download(artifact.path, basename(artifact.path)); } catch(error){ res.status(400).json({error:error.message}); } });
+app.get('/api/builder/workspaces/:id/manifest', requireAdvanced, async (req,res) => { try { res.json(await workspace.readManifest(req.params.id)); } catch(error){ res.status(404).json({error:error.message}); } });
+app.post('/api/builder/workspaces/:id/import', requireCreator, async (req,res) => { try { const data=String(req.body?.data||''); if(!data.startsWith('data:application/zip;base64,')) return res.status(400).json({error:'ZIP data URL required'}); const buffer=Buffer.from(data.split(',')[1],'base64'); if(buffer.length>25*1024*1024) return res.status(413).json({error:'Import is limited to 25MB.'}); const tmp=join(os.tmpdir(),`nova-import-${Date.now()}-${Math.random().toString(16).slice(2)}.zip`); await fs.writeFile(tmp,buffer); try { const out=await workspace.importZip(req.params.id,tmp); res.json({ok:true,...out}); } finally { await fs.rm(tmp,{force:true}); } } catch(error){ res.status(400).json({error:error.message}); } });
+app.post('/api/builder/workspaces/:id/delete', requireCreator, async (req,res) => { try { res.json({ok:true,...await workspace.remove(req.params.id,req.body?.path)}); } catch(error){ res.status(400).json({error:error.message}); } });
+app.post('/api/builder/workspaces/:id/move', requireCreator, async (req,res) => { try { res.json({ok:true,...await workspace.move(req.params.id,req.body?.from,req.body?.to)}); } catch(error){ res.status(400).json({error:error.message}); } });
+app.get('/api/tools', requireAdvanced, (_req, res) => res.json({ tools: tools.describe() }));
+app.get('/api/jobs', requireAdvanced, (_req, res) => res.json({ jobs: jobs.list() }));
+app.get('/api/jobs/:id', requireAdvanced, (req, res) => { const job=jobs.get(req.params.id); if(!job) return res.status(404).json({error:'Job not found'}); res.json(job); });
+
+app.post('/api/agent', requireCreator, async (req, res) => {
   const { goal='', user_id='default', persona='nova', attachments=[] } = req.body || {};
   if (typeof goal !== 'string' || !goal.trim()) return res.status(400).json({ error:'goal is required' });
   if (!Array.isArray(attachments) || attachments.length > 5) return res.status(400).json({ error:'A maximum of 5 attachments is supported.' });
@@ -460,7 +510,7 @@ app.post('/api/agent', async (req, res) => {
   }
 });
 
-app.post('/api/jobs/:id/approve', async (req, res) => {
+app.post('/api/jobs/:id/approve', requireCreator, async (req, res) => {
   const job = jobs.get(req.params.id);
   if (!job) return res.status(404).json({error:'Job not found'});
   if (job.status !== 'awaiting_approval') return res.status(409).json({error:`Job is not awaiting approval. Current status: ${job.status}`});
@@ -479,7 +529,7 @@ app.post('/api/jobs/:id/approve', async (req, res) => {
   } catch(error) { res.status(502).json({...currentJobSummary(job),ok:false,error:error.message}); }
 });
 
-app.post('/api/jobs/:id/cancel', (req, res) => {
+app.post('/api/jobs/:id/cancel', requireCreator, (req, res) => {
   const job=jobs.cancel(req.params.id);
   if(!job) return res.status(404).json({error:'Job not found'});
   res.json({ok:true,job});
@@ -505,7 +555,7 @@ app.get('/api/self-test', (_req, res) => {
     {name:'replanning',ok:Boolean(agentCore.replan(plan, plan.find(x=>x.id==='research'), new Error('Search provider unavailable'), {replans:0,usedStrategies:[]}))},
     {name:'static-frontend',ok:true}
   ];
-  res.json({ok:checks.every(c=>c.ok),version:'17.0.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false}});
+  res.json({ok:checks.every(c=>c.ok),version:'21.0.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
 });
 
 app.post('/speak', async (req, res) => {

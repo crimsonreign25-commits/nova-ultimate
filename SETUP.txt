@@ -20,3 +20,11 @@ Also included from v3:
 - Attachment previews
 
 Important: browser microphone speech recognition support varies by browser. Chrome/Chromium-based browsers generally provide the best support. The current backend receives the resulting text; it does not upload raw microphone audio.
+
+NOVA 21 additions:
+- Persistent server-side chat: data/nova-store/conversations.json (created automatically)
+- Access/audit records: data/nova-store/access.json and audit.json
+- Optional creator authorization: NOVA_CREATOR_TOKEN
+- Optional read-only restricted access: NOVA_VIEWER_TOKEN
+- Three ElevenLabs persona IDs: NOVA_VOICE_ID, JARVIS_VOICE_ID, FRIDAY_VOICE_ID
+- Autonomous build progress is shown as human-readable stages without filenames or raw logs.

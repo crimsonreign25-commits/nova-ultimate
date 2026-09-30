@@ -1,0 +1,20 @@
+NOVA 21 — Persistent Chat + Visible Execution + Creator Access
+
+What changed
+- Conversations persist server-side in data/nova-store/conversations.json.
+- Every normal user message and NOVA reply is saved to the active conversation.
+- Conversation context is supplied back to NOVA for continuity.
+- Chat history can be restored after restart or on another client using the same user id.
+- Autonomous builds now expose human-readable progress stages: understanding, planning, creating files, building, testing, fixing, verifying, ready.
+- Normal UI intentionally hides filenames, workspace paths, job IDs, retry counters and raw execution traces.
+- A final result card is displayed after a verified autonomous build.
+- Advanced capabilities are backend-protected, not merely hidden in the UI.
+- Creator token grants full control; viewer token grants read-only access to restricted resources.
+- Access requests and creator decisions are recorded in an audit log.
+- Restricted mutations (builder edits, agent controls, job approvals/cancellation, etc.) require creator authorization.
+
+Configuration
+NOVA_CREATOR_TOKEN=long-random-secret
+NOVA_VIEWER_TOKEN=optional-read-only-secret
+
+Use HTTPS and rotate secrets in production. Do not put tokens in the frontend source.

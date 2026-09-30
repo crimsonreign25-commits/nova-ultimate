@@ -1,0 +1,7 @@
+NOVA 18 — AUTONOMOUS SANDBOX BUILD
+
+NOVA can accept a build goal, create an isolated workspace, generate implementation changes, run safe verification, diagnose failures, request bounded repairs, retry, and roll back the sandbox if verification does not pass. Successful builds are packaged as an artifact.
+
+Safety: workspace path traversal is blocked; arbitrary shell execution is not allowed; verification runners are allowlisted; build rounds are bounded; failed builds are rolled back. External model generation requires GROQ_API_KEY.
+
+Primary endpoint: POST /api/autonomous-build with {goal,name?,user_id?,persona?}.
