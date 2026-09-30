@@ -1,511 +1,149 @@
-const statusButton = document.getElementById('statusButton');
-const systemName = document.getElementById('systemName');
-const systemVersion = document.getElementById('systemVersion');
-const groqStatus = document.getElementById('groqStatus');
-const featureCount = document.getElementById('featureCount');
-const systemBadge = document.getElementById('systemBadge');
-const responseBox = document.getElementById('responseBox');
-const predictionsBox = document.getElementById('predictions');
-const scanResult = document.getElementById('scanResult');
-const voiceStatus = document.getElementById('voiceStatus');
-const activePersonaTitle = document.getElementById('activePersonaTitle');
-const speakButton = document.getElementById('speakButton');
-let activePersona = 'nova';
+const $ = (id) => document.getElementById(id);
+const USER_ID = 'mobile-user';
+let activePersona = localStorage.getItem('nova_persona') || 'nova';
 let latestResponse = '';
-
-const fileInput = document.getElementById('fileInput');
-const cameraButton = document.getElementById('cameraButton');
-const clearAttachmentsButton = document.getElementById('clearAttachments');
-const attachmentPreview = document.getElementById('attachmentPreview');
-const cameraModal = document.getElementById('cameraModal');
-const cameraPreview = document.getElementById('cameraPreview');
-const cameraCanvas = document.getElementById('cameraCanvas');
-const captureButton = document.getElementById('captureButton');
-const closeCameraButton = document.getElementById('closeCamera');
-const switchCameraButton = document.getElementById('switchCameraButton');
-const cameraMessage = document.getElementById('cameraMessage');
-const micButton = document.getElementById('micButton');
-const liveVoiceButton = document.getElementById('liveVoiceButton');
-const liveVoiceStatus = document.getElementById('liveVoiceStatus');
-const liveVoiceIndicator = document.getElementById('liveVoiceButton');
-const micStatus = document.getElementById('micStatus');
-const messageInput = document.getElementById('messageInput');
+let selectedAttachments = [];
 let recognition = null;
 let isListening = false;
-let selectedAttachments = [];
-let cameraStream = null;
-let cameraFacingMode = 'environment';
 let liveVoiceMode = false;
 let isSpeaking = false;
-let pendingLiveRequest = false;
-const workspaceMode = document.getElementById('workspaceMode');
-document.querySelectorAll('.rail-btn').forEach((button) => {
-  button.addEventListener('click', () => {
-    const target = document.getElementById(button.dataset.target);
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    document.querySelectorAll('.rail-btn').forEach((item) => item.classList.toggle('active', item === button));
-  });
-});
+let cameraStream = null;
+let cameraFacingMode = 'environment';
+let conversations = JSON.parse(localStorage.getItem('nova_conversations') || '[]');
+let memories = JSON.parse(localStorage.getItem('nova_memories') || '[]');
+let currentConversation = { id: crypto.randomUUID?.() || String(Date.now()), title: 'New Chat', messages: [] };
+let serverChatReady = false;
+let latestAutonomousTaskId = null;
 
-function updateWorkspaceMode(mode) {
-  if (workspaceMode) workspaceMode.textContent = mode;
+async function saveState(){ localStorage.setItem('nova_conversations', JSON.stringify(conversations.slice(-30))); localStorage.setItem('nova_memories', JSON.stringify(memories.slice(-30))); localStorage.setItem('nova_persona', activePersona); updateMemoryUI(); if(serverChatReady && currentConversation.messages.length){try{await postJson('/api/chat',{user_id:USER_ID,id:currentConversation.id,title:currentConversation.title,messages:currentConversation.messages});}catch{}} }
+function toast(message){ const el=$('toast'); el.textContent=message; el.hidden=false; clearTimeout(window.__novaToast); window.__novaToast=setTimeout(()=>el.hidden=true,2600); }
+function scrollTo(id){ const el=$(id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+function setThinking(on){ $('typingIndicator').hidden=!on; $('thinkingState').textContent=on?'● Thinking':'● Ready'; $('conversationLabel').textContent=on?'NOVA is thinking…':'NOVA is ready'; }
+function updateMode(text){ $('workspaceMode').textContent=text; }
+function addChatMessage(role,text,time=new Date()){ const row=document.createElement('div'); row.className=`message-row ${role==='user'?'user-message':'nova-message'}`; const avatar=document.createElement('div'); avatar.className='chat-avatar'; avatar.textContent=role==='user'?'U':'N'; const bubble=document.createElement('div'); bubble.className='bubble'; const who=document.createElement('b'); who.textContent=role==='user'?'YOU':activePersona.toUpperCase(); const body=document.createElement('p'); body.textContent=text; const stamp=document.createElement('time'); stamp.textContent=time.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); bubble.append(who,body,stamp); row.append(avatar,bubble); $('chatFeed').append(row); $('chatFeed').scrollTop=$('chatFeed').scrollHeight; }
+function renderConversation(){ $('chatFeed').innerHTML=''; if(!currentConversation.messages.length){ addChatMessage('nova','Absolutely! I can help you build, research, analyze, code, or plan. What are we working on?'); return; } currentConversation.messages.forEach(m=>addChatMessage(m.role,m.text,new Date(m.at))); }
+function archiveCurrent(){ if(currentConversation.messages.length){ conversations.push({...currentConversation}); saveState(); } }
+function newChat(){ archiveCurrent(); currentConversation={id:crypto.randomUUID?.()||String(Date.now()),title:'New Chat',messages:[]}; latestResponse=''; renderConversation(); $('messageInput').value=''; updateMode('TEXT MODE'); renderHistory(); toast('New NOVA conversation started.'); }
+function formatFileSize(bytes){if(bytes<1024)return `${bytes} B`;if(bytes<1024*1024)return `${(bytes/1024).toFixed(1)} KB`;return `${(bytes/1024/1024).toFixed(1)} MB`;}
+function renderAttachments(){ const box=$('attachmentPreview'); box.innerHTML=''; $('clearAttachments').hidden=!selectedAttachments.length; selectedAttachments.forEach((item,index)=>{ const card=document.createElement('div');card.className='attachment-card'; if(item.type.startsWith('image/')&&item.previewUrl){const img=document.createElement('img');img.src=item.previewUrl;img.alt=item.name;card.append(img)}else{const icon=document.createElement('div');icon.className='attachment-file-icon';icon.textContent='📄';card.append(icon)} const meta=document.createElement('div');meta.className='attachment-meta';const n=document.createElement('span');n.className='attachment-name';n.textContent=item.name;const s=document.createElement('span');s.className='attachment-size';s.textContent=formatFileSize(item.size);meta.append(n,s);const r=document.createElement('button');r.className='attachment-remove';r.type='button';r.textContent='✕';r.onclick=()=>{const [gone]=selectedAttachments.splice(index,1);if(gone?.previewUrl)URL.revokeObjectURL(gone.previewUrl);renderAttachments()};card.append(meta,r);box.append(card);}); }
+function addFiles(files){ Array.from(files).forEach(file=>{if(selectedAttachments.length>=5||file.size>8*1024*1024)return;if(selectedAttachments.some(x=>x.name===file.name&&x.size===file.size))return;selectedAttachments.push({name:file.name,size:file.size,type:file.type||'application/octet-stream',file,previewUrl:file.type.startsWith('image/')?URL.createObjectURL(file):null});}); renderAttachments(); updateMode('ATTACHMENTS'); }
+function fileToDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
+async function buildAttachmentPayload(){const out=[];for(const item of selectedAttachments){const supported=item.type.startsWith('image/')||/\.(pdf|docx|xlsx|pptx|txt|csv)$/i.test(item.name)||['text/plain','text/csv','application/pdf'].includes(item.type);if(!supported){out.push({name:item.name,type:item.type,unsupported:true});continue}out.push({name:item.name,type:item.type,data:await fileToDataUrl(item.file)});}return out;}
+async function postJson(url,payload){const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||`Request failed (${res.status})`);return data;}
+async function syncChats(){try{const d=await fetch(`/api/chat?user_id=${encodeURIComponent(USER_ID)}`).then(r=>r.json());if(Array.isArray(d.conversations)){conversations=d.conversations;serverChatReady=true;updateMemoryUI();renderHistory();}}catch{serverChatReady=false}}
+async function persistCurrent(){if(!currentConversation.messages.length)return;try{await postJson('/api/chat',{user_id:USER_ID,id:currentConversation.id,title:currentConversation.title,messages:currentConversation.messages});serverChatReady=true;}catch{}}
+async function sendMessage(prefilled=null){const input=$('messageInput');const message=(prefilled??input.value).trim();if(!message&&!selectedAttachments.length)return; if(isSpeaking)return; const attachments=await buildAttachmentPayload(); currentConversation.messages.push({role:'user',text:message||'Analyze my attachments.',at:Date.now()}); if(currentConversation.title==='New Chat')currentConversation.title=message.slice(0,44)||'Attachment analysis'; addChatMessage('user',message||'Analyze my attachments.'); input.value=''; setThinking(true); $('sendButton')?.setAttribute('disabled','disabled'); try{const data=await postJson('/assist',{message:message||'Analyze my attachments.',user_id:USER_ID,conversation_id:currentConversation.id,persona:activePersona,attachments});latestResponse=data.response||'No response returned.';currentConversation.messages.push({role:'nova',text:latestResponse,at:Date.now()});addChatMessage('nova',latestResponse); latestResponse=data.response||''; if(liveVoiceMode&&latestResponse)await speakText(latestResponse,true); }catch(error){addChatMessage('nova',`I hit a connection issue: ${error.message}`);toast(error.message);}finally{setThinking(false);renderHistory();saveState();$('sendButton')?.removeAttribute('disabled');}}
+function renderHistory(){const list=$('historyList');list.innerHTML='';const q=String($('chatHistorySearch')?.value||'').toLowerCase().trim();const items=[...conversations].reverse().filter(c=>!q||`${c.title} ${(c.messages||[]).map(m=>m.text).join(' ')}`.toLowerCase().includes(q)).slice(0,20);if(!items.length){list.innerHTML='<div class="history-empty">No matching conversations.</div>';return;}items.forEach((c)=>{const wrap=document.createElement('div');wrap.className='history-item';const b=document.createElement('button');b.textContent=c.title||'Conversation';const meta=document.createElement('small');meta.textContent=new Date(c.updatedAt||c.messages?.at(-1)?.at||Date.now()).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});b.append(meta);b.onclick=async()=>{await persistCurrent();currentConversation={...c};renderConversation();scrollTo('assistantWorkspace');};const more=document.createElement('button');more.className='history-more';more.textContent='•••';more.onclick=async(e)=>{e.stopPropagation();const action=prompt('Type rename or delete');if(action==='rename'){const title=prompt('New conversation name',c.title||'Conversation');if(title?.trim()){c.title=title.trim();await postJson('/api/chat',{user_id:USER_ID,id:c.id,title:c.title,messages:c.messages});renderHistory();}}else if(action==='delete'){if(confirm('Delete this conversation?')){await fetch(`/api/chat/${encodeURIComponent(c.id)}?user_id=${encodeURIComponent(USER_ID)}`,{method:'DELETE'});conversations=conversations.filter(x=>x.id!==c.id);renderHistory();}}};wrap.append(b,more);list.append(wrap);});}
+function updateMemoryUI(){ $('memoryCount').textContent=memories.length; $('historyCount').textContent=conversations.length+(currentConversation.messages.length?1:0); $('messageCount').textContent=conversations.reduce((n,c)=>n+(c.messages?.length||0),0)+(currentConversation.messages?.length||0); const box=$('memoryItems');box.innerHTML='';(memories.length?memories:['No saved memories yet.']).slice(-8).forEach(m=>{const s=document.createElement('span');s.textContent=m.text||m;box.append(s);});}
+async function loadStatus(){try{const d=await fetch('/api/status').then(r=>r.json());$('groqStatus').textContent=d.groqConfigured?'Connected':'Not configured';$('voiceStatus').textContent=d.voiceConfigured?'Ready':'Not configured';$('providerStatus').textContent=d.groqConfigured?'Groq connected':'Add GROQ_API_KEY';$('settingsVoice').textContent=d.voiceConfigured?'ElevenLabs ready':'Not configured';}catch{ $('groqStatus').textContent='Offline';$('voiceStatus').textContent='Offline';}}
+
+async function executeCommand(task){
+  const input=(task||$('commandInput').value||'').trim(); if(!input)return;
+  $('agentInput').value=input; scrollTo('agentPanel'); await runAgent(input);
+}
+
+async function runAutonomousBuild(goal){
+  setThinking(true); showExecutionProgress('planning'); toast('NOVA is starting a private sandbox…');
+  try{
+    const started=await postJson('/api/autonomous-build',{goal,user_id:USER_ID,persona:activePersona,name:'nova-task'}); const taskId=started.taskId; latestAutonomousTaskId=taskId;
+    let done=false; while(!done){await new Promise(r=>setTimeout(r,650));const task=await fetch(`/api/autonomous-progress/${encodeURIComponent(taskId)}`).then(r=>r.json());renderExecutionProgress(task.progress||[]);if(task.status==='completed'||task.status==='failed'){done=true;if(task.status==='completed'){const summary='Done — NOVA implemented the solution in a private sandbox, tested it, fixed issues when needed, verified the result, and packaged the final result.';addChatMessage('nova',summary);currentConversation.messages.push({role:'nova',text:summary,at:Date.now()});showFinalResult(task.result); $('finalResult').querySelector('[data-result-action]').onclick=async()=>{const r=await fetch(`/api/autonomous-download/${encodeURIComponent(taskId)}`);if(!r.ok){toast('Verified result is no longer available.');return;}const blob=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='NOVA-verified-result.zip';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);};}else{const msg=`NOVA found an issue during verification and stopped safely. ${task.error||'The sandbox was rolled back.'}`;addChatMessage('nova',msg);currentConversation.messages.push({role:'nova',text:msg,at:Date.now()});}}}
+    await persistCurrent(); renderHistory(); saveState();
+  }catch(e){addChatMessage('nova',`Autonomous build could not start: ${e.message}`);toast(e.message)} finally{setThinking(false)}
+}
+function showExecutionProgress(items){const box=$('executionProgress');if(!box)return;box.hidden=false;box.innerHTML='';(items||[]).forEach(item=>{const row=document.createElement('div');row.className=`exec-step ${item.status}`;row.innerHTML=`<span>${item.status==='done'?'✓':item.status==='active'?'◌':'○'}</span><b>${item.label}</b>`;box.append(row)});}
+function showFinalResult(result){const card=$('finalResult');if(!card)return;card.hidden=false;card.querySelector('[data-result-title]').textContent='Ready — your result is verified';card.querySelector('[data-result-detail]').textContent=`Built in a private sandbox${result?.rounds?` • ${result.rounds} build round${result.rounds===1?'':'s'}`:''}.`;card.querySelector('[data-result-action]').onclick=async()=>{if(!result?.artifact?.path){toast('Verified result is not available yet.');return;}toast('Preparing your verified result…');};}
+
+function renderAgentTrace(trace){
+  const box=$('agentTrace'); box.innerHTML='';
+  (trace||[]).forEach((item)=>{const row=document.createElement('div');row.className=`agent-trace-row ${item.status}`;row.innerHTML=`<span class="trace-icon">${item.status==='done'?'✓':item.status==='failed'?'!':item.status==='skipped'?'–':'◌'}</span><div><b>${item.label}</b><small>${item.detail||item.status.toUpperCase()}</small></div><time>${item.at||0}ms</time>`;box.append(row);});
+}
+function setCoreState(state,signal){$('thinkingState').textContent=state;$('coreSignal').textContent=signal;$('agentLiveState').textContent=state.replace('● ','').toUpperCase();}
+async function runAgent(goal){
+  if(!goal.trim())return;
+  const trace=$('agentTrace'), result=$('agentResult'); result.hidden=true; trace.innerHTML='<div class="agent-empty active">NOVA is constructing an execution graph…</div>';
+  $('agentStepCount').textContent='—';$('agentToolCount').textContent='—';$('agentSourceCount').textContent='—';$('agentElapsed').textContent='0.0';$('agentDuration').textContent='RUNNING';
+  setCoreState('● Planning','DECOMPOSING OBJECTIVE'); $('typingIndicator').hidden=false;
+  try{
+    const data=await postJson('/api/agent',{goal,user_id:USER_ID,persona:activePersona,attachments:await buildAttachmentPayload()});
+    renderAgentTrace(data.trace||[]);
+    const tools=new Set((data.trace||[]).map(x=>x.tool).filter(Boolean));
+    $('agentStepCount').textContent=(data.steps||data.trace||[]).length;$('agentToolCount').textContent=tools.size;$('agentSourceCount').textContent=(data.research||[]).length;$('agentElapsed').textContent=((data.durationMs||0)/1000).toFixed(1);$('agentDuration').textContent=`${data.durationMs||0}ms`;
+    setCoreState('● Complete','EXECUTION VERIFIED');
+    result.hidden=false; result.innerHTML=`<div class="result-head"><b>NOVA RESULT</b><span>${new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</span></div><p>${escapeHtml(data.response||'Workflow complete.').replace(/\n/g,'<br>')}</p>`;
+    if(data.research?.length){ $('researchResults').innerHTML=''; data.research.forEach(item=>{const card=document.createElement('div');card.className='research-item';const a=document.createElement('a');a.href=item.url;a.target='_blank';a.rel='noopener';a.textContent=item.title;const p=document.createElement('p');p.textContent=item.snippet||item.url;card.append(a,p);$('researchResults').append(card);}); $('researchState').textContent='Agent gathered live sources'; }
+    if(data.security){$('scanResult').textContent=JSON.stringify(data.security,null,2);}
+    if(data.response){currentConversation.messages.push({role:'user',text:goal,at:Date.now()});currentConversation.messages.push({role:'nova',text:data.response,at:Date.now()});if(currentConversation.title==='New Chat')currentConversation.title=goal.slice(0,44);addChatMessage('user',goal);addChatMessage('nova',data.response);latestResponse=data.response;saveState();renderHistory();}
+  }catch(e){trace.innerHTML=`<div class="agent-empty failed">Agent stopped: ${escapeHtml(e.message)}</div>`;setCoreState('● Error','EXECUTION INTERRUPTED');$('agentDuration').textContent='FAILED';toast(e.message);}
+  finally{$('typingIndicator').hidden=true;}
+}
+function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function setupCommandCenter(){
+  $('commandForm')?.addEventListener('submit',e=>{e.preventDefault();executeCommand();});
+  $('agentForm')?.addEventListener('submit',e=>{e.preventDefault();runAgent($('agentInput').value);});
+  document.querySelectorAll('[data-command]').forEach(b=>b.onclick=()=>{const k=b.dataset.command;const presets={research:'Research the latest information about ',analyze:'Analyze my attached files and explain the key findings.',code:'Build a production-ready solution for ',security:'Scan this URL for security risks: '};$('commandInput').value=presets[k]||'';$('agentInput').value=$('commandInput').value;$('agentInput').focus();scrollTo('agentPanel');});
 }
 
 
-function formatFileSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+async function loadBuilderWorkspaces(){try{const d=await fetch('/api/builder/workspaces').then(r=>r.json());const sel=$('builderWorkspace');sel.innerHTML='<option value="">Select workspace…</option>'+(d.workspaces||[]).map(w=>`<option value="${escapeHtml(w.id)}">${escapeHtml(w.id)}</option>`).join('');}catch(e){toast(e.message)}}
+async function refreshBuilder(){const id=$('builderWorkspace').value;if(!id)return;try{const d=await fetch(`/api/builder/workspaces/${encodeURIComponent(id)}`).then(r=>r.json());$('builderFiles').innerHTML=(d.files||[]).map(f=>`<div class="builder-file"><span>${escapeHtml(f.path)}</span><small>${f.size} B</small></div>`).join('')||'Workspace is empty.';}catch(e){$('builderFiles').textContent=e.message}}
+async function runBuilderTest(){const id=$('builderWorkspace').value;if(!id)return toast('Select a workspace first.');try{$('builderTest').textContent='Testing…';const d=await postJson(`/api/builder/workspaces/${encodeURIComponent(id)}/test`,{});$('builderTest').textContent=JSON.stringify(d,null,2);toast(d.ok?'Builder verification passed.':'Builder verification found failures.');}catch(e){$('builderTest').textContent=e.message}}
+async function setupBuilder(){if(!$('builderPanel'))return;loadBuilderWorkspaces();$('builderRefresh').onclick=refreshBuilder;$('builderWorkspace').onchange=refreshBuilder;$('builderCreate').onclick=async()=>{const name=prompt('Workspace name','nova-project');if(!name)return;try{const d=await postJson('/api/builder/workspaces',{name});await loadBuilderWorkspaces();$('builderWorkspace').value=d.id;await refreshBuilder();toast('Sandbox workspace created.')}catch(e){toast(e.message)}};$('builderTestBtn').onclick=runBuilderTest;$('builderPlanForm').onsubmit=async e=>{e.preventDefault();const id=$('builderWorkspace').value;if(!id)return toast('Select a workspace first.');try{const d=await postJson(`/api/builder/workspaces/${encodeURIComponent(id)}/plan`,{goal:$('builderGoal').value});$('builderPlan').textContent=JSON.stringify(d,null,2);}catch(e){$('builderPlan').textContent=e.message}};$('builderBuildBtn').onclick=async()=>{const id=$('builderWorkspace').value,goal=$('builderGoal').value.trim();if(!id||!goal)return toast('Select a workspace and enter a goal first.');try{$('builderPlan').textContent='NOVA is autonomously building…';const d=await postJson(`/api/builder/workspaces/${encodeURIComponent(id)}/build`,{goal,persona:activePersona});$('builderPlan').textContent=JSON.stringify(d,null,2);await refreshBuilder();toast(d.ok?`Build verified • SHA-256 ${d.artifact?.sha256||'ready'}`:'Build finished with verification issues.');}catch(e){$('builderPlan').textContent=e.message;toast(e.message);await refreshBuilder();}};$('builderManifestBtn').onclick=async()=>{const id=$('builderWorkspace').value;if(!id)return toast('Select a workspace first.');try{const d=await fetch(`/api/builder/workspaces/${encodeURIComponent(id)}/manifest`).then(r=>r.json());$('builderPlan').textContent=JSON.stringify(d,null,2);}catch(e){toast(e.message)}};$('builderImport').onclick=()=>$('builderImportInput').click();$('builderImportInput').onchange=async e=>{const id=$('builderWorkspace').value,file=e.target.files?.[0];if(!id||!file)return;try{const reader=new FileReader();reader.onload=async()=>{try{const d=await postJson(`/api/builder/workspaces/${encodeURIComponent(id)}/import`,{data:reader.result});toast(`Imported ${d.imported} files.`);await refreshBuilder();}catch(err){toast(err.message)}};reader.readAsDataURL(file);}finally{e.target.value='';}};$('builderPackageBtn').onclick=async()=>{const id=$('builderWorkspace').value;if(!id)return toast('Select a workspace first.');try{const r=await fetch(`/api/builder/workspaces/${encodeURIComponent(id)}/package`,{method:'POST'});if(!r.ok)throw new Error((await r.json()).error||'Packaging failed');const blob=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${id}-artifact.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Artifact packaged.')}catch(e){toast(e.message)}}}
+
+function setupNav(){document.querySelectorAll('.rail-btn').forEach(btn=>btn.onclick=()=>{scrollTo(btn.dataset.target);document.querySelectorAll('.rail-btn').forEach(x=>x.classList.toggle('active',x===btn));$('commandRail').classList.remove('open');});}
+function setupPrompts(){document.querySelectorAll('[data-prompt]').forEach(btn=>btn.onclick=()=>{ $('messageInput').value=btn.dataset.prompt+' ';scrollTo('assistantWorkspace');$('messageInput').focus();});document.querySelector('[data-research]')?.addEventListener('click',()=>{scrollTo('researchPanel');$('researchInput').focus();});document.querySelector('[data-autonomous]')?.addEventListener('click',()=>{const goal=prompt('What should NOVA build autonomously?');if(goal?.trim()){runAutonomousBuild(goal.trim())}});$('moreTools').onclick=()=>scrollTo('toolsPanel');}
+function setupPersonas(){document.querySelectorAll('.persona-btn').forEach(btn=>btn.onclick=()=>{activePersona=btn.dataset.persona;document.querySelectorAll('.persona-btn').forEach(x=>x.classList.toggle('active',x===btn));$('activePersonaTitle').textContent=activePersona.toUpperCase();$('railPersonaName').textContent=activePersona.toUpperCase();saveState();toast(`Persona switched to ${activePersona.toUpperCase()}.`);});}
+async function searchWeb(query){if(!query.trim())return;const results=$('researchResults');results.innerHTML='<div class="tool-output">Searching the web…</div>';$('researchState').textContent='Searching';try{const data=await postJson('/research',{query});results.innerHTML='';(data.results||[]).forEach(item=>{const card=document.createElement('div');card.className='research-item';const a=document.createElement('a');a.href=item.url;a.target='_blank';a.rel='noopener';a.textContent=item.title;const p=document.createElement('p');p.textContent=item.snippet||item.url;card.append(a,p);results.append(card);});if(!data.results?.length)results.innerHTML='<div class="tool-output">No results found.</div>'; $('researchState').textContent='Ready';}catch(e){results.innerHTML=`<div class="tool-output">Research unavailable: ${e.message}</div>`;$('researchState').textContent='Offline';}}
+function setupReferenceControls(){document.querySelectorAll('.capability-card [data-target]').forEach(btn=>btn.addEventListener('click',()=>scrollTo(btn.dataset.target)));document.querySelectorAll('.capability-card [data-action]').forEach(btn=>btn.addEventListener('click',()=>{const action=btn.dataset.action;if(action==='camera')$('cameraButton')?.click();if(action==='upload')$('fileInput')?.click();if(action==='voice')$('liveVoiceButton')?.click();}));document.querySelectorAll('.persona-pills [data-persona]').forEach(btn=>btn.addEventListener('click',()=>document.querySelector(`.persona-btn[data-persona="${btn.dataset.persona}"]`)?.click()));}
+function setupTools(){document.querySelectorAll('[data-tool]').forEach(btn=>btn.onclick=async()=>{const tool=btn.dataset.tool;const out=$('toolOutput');if(tool==='calculator'){const expr=prompt('Enter a calculation');if(expr){try{const safe=expr.replace(/[^0-9+\-*/().%\s]/g,'');const result=Function(`"use strict";return (${safe})`)();out.textContent=`Calculator: ${expr} = ${result}`;}catch{out.textContent='Invalid calculation.'}}return}const prompts={web:'Research the latest information about ',code:'Write production-ready code for ',image:'Analyze the attached image carefully.',pdf:'Summarize the attached PDF.',automation:'Create an automation plan for '};$('messageInput').value=prompts[tool]||'';scrollTo('assistantWorkspace');$('messageInput').focus();});}
+function setupMicrophone(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){$('micStatus').textContent='Voice input is not supported by this browser.';return;}recognition=new SR();recognition.continuous=false;recognition.interimResults=true;recognition.lang=navigator.language||'en-US';recognition.onstart=()=>{isListening=true;$('micButton').classList.add('active');$('micStatus').textContent='Listening… speak clearly to NOVA.';updateMode(liveVoiceMode?'LIVE VOICE':'VOICE INPUT')};recognition.onresult=e=>{let finalText='';let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t;else interim+=t;}if(finalText.trim()){$('messageInput').value=(`${$('messageInput').value} ${finalText}`).trim();if(liveVoiceMode)sendMessage();}if(interim)$('micStatus').textContent=`Hearing: ${interim}`};recognition.onend=()=>{isListening=false;$('micButton').classList.remove('active');$('micStatus').textContent='Microphone ready.'};recognition.onerror=e=>{$('micStatus').textContent=`Microphone: ${e.error}`};$('micButton').onclick=()=>{if(isListening)recognition.stop();else try{recognition.start()}catch{}};}
+async function speakText(text,live=false){if(!text||isSpeaking)return;isSpeaking=true;try{const r=await fetch('/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,persona:activePersona})});if(!r.ok)throw new Error((await r.json()).error||'Voice request failed');const url=URL.createObjectURL(await r.blob());const audio=new Audio(url);if(live)$('liveVoiceStatus').textContent='NOVA is speaking…';await new Promise((resolve,reject)=>{audio.onended=resolve;audio.onerror=reject;audio.play().catch(reject)});URL.revokeObjectURL(url);}catch(e){toast(e.message)}finally{isSpeaking=false;if(live&&liveVoiceMode){$('liveVoiceStatus').textContent='Listening again…';setTimeout(()=>{if(!isListening&&recognition)try{recognition.start()}catch{}},250);}}}
+function setupLiveVoice(){$('liveVoiceButton').onclick=()=>{if(!recognition){toast('Live Voice is not supported here.');return}liveVoiceMode=!liveVoiceMode;$('liveVoiceButton').classList.toggle('active',liveVoiceMode);$('liveVoiceStatus').textContent=liveVoiceMode?'Live Voice enabled. Listening…':'Live Voice is off.';updateMode(liveVoiceMode?'LIVE VOICE':'TEXT MODE');if(liveVoiceMode&&!isListening)try{recognition.start()}catch{}else if(!liveVoiceMode&&isListening)recognition.stop();};$('speakButton').onclick=()=>speakText(latestResponse,false);}
+function setupCamera(){const modal=$('cameraModal');$('cameraButton').onclick=async()=>{modal.hidden=false;updateMode('CAMERA');try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cameraFacingMode,width:{ideal:1280},height:{ideal:720}},audio:false});$('cameraPreview').srcObject=cameraStream;$('cameraMessage').textContent='Camera ready. Capture a photo to attach it to NOVA.';}catch{$('cameraMessage').textContent='Camera permission was denied or unavailable.'}};function close(){cameraStream?.getTracks().forEach(t=>t.stop());cameraStream=null;modal.hidden=true;}$('closeCamera').onclick=close;$('switchCameraButton').onclick=async()=>{cameraFacingMode=cameraFacingMode==='environment'?'user':'environment';close();$('cameraButton').click()};$('captureButton').onclick=()=>{if(!cameraStream)return;const v=$('cameraPreview');const c=$('cameraCanvas');c.width=v.videoWidth||1280;c.height=v.videoHeight||720;c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(blob=>{if(blob){addFiles([new File([blob],`NOVA-Capture-${Date.now()}.jpg`,{type:'image/jpeg'})]);$('cameraMessage').textContent='Photo captured and attached.'}},'image/jpeg',.92)};}
+$('assistantForm').addEventListener('submit',e=>{e.preventDefault();sendMessage()});$('messageInput').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendMessage()}});$('fileInput').addEventListener('change',e=>{addFiles(e.target.files);e.target.value=''});$('clearAttachments').onclick=()=>{selectedAttachments.forEach(x=>x.previewUrl&&URL.revokeObjectURL(x.previewUrl));selectedAttachments=[];renderAttachments()};$('newChat').onclick=newChat;$('clearConversation').onclick=newChat;$('mobileMenu').onclick=()=>$('commandRail').classList.toggle('open');$('uploadFile').onclick=()=>$('fileInput').click();$('takePhoto').onclick=()=>$('cameraButton').click();$('globalSearch').onclick=()=>{scrollTo('researchPanel');$('researchInput').focus()};$('notificationButton').onclick=()=>toast('NOVA system status: operational.');$('requestAdvanced')?.addEventListener('click',async()=>{const reason=prompt('What restricted NOVA information or feature do you need?');if(!reason?.trim())return;try{await postJson('/api/access/request',{user_id:USER_ID,resource:'advanced',reason:reason.trim()});toast('Request sent to NOVA creator for review.');}catch(e){toast(e.message)}});$('profileButton').onclick=()=>scrollTo('voiceWorkspace');$('railPersona').onclick=()=>scrollTo('voiceWorkspace');$('researchButton').onclick=()=>searchWeb($('researchInput').value);$('researchInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchWeb(e.target.value)}});$('saveMemory').onclick=()=>{const text=prompt('What should NOVA remember about this conversation?');if(text?.trim()){memories.push({text:text.trim(),at:Date.now()});saveState();toast('Memory saved locally.')}};$('clearMemory').onclick=()=>{if(confirm('Clear NOVA local memory?')){memories=[];saveState();toast('Local memory cleared.')}};$('scanForm').addEventListener('submit',async e=>{e.preventDefault();try{$('scanResult').textContent='Scanning…';const d=await postJson('/scan-url',{url:$('scanInput').value});$('scanResult').textContent=JSON.stringify(d,null,2)}catch(err){$('scanResult').textContent=err.message}});$('viewAllHistory').onclick=()=>{scrollTo('historyPanel');toast(`${conversations.length} saved conversations in this browser.`)};
+setupNav();setupPrompts();setupPersonas();setupReferenceControls();setupTools();setupCommandCenter();setupBuilder();$('coreSignal').textContent='READY • AWAITING OBJECTIVE';setupMicrophone();setupLiveVoice();setupCamera();renderConversation();renderHistory();updateMemoryUI();loadStatus();syncChats();
+
+
+// NOVA 10.0 Identity + install layer: guest-first, account-enhanced.
+const NOVA_SESSION_KEY = 'nova_session';
+const NOVA_MODE_KEY = 'nova_mode';
+let accountMode = localStorage.getItem(NOVA_MODE_KEY) || 'guest';
+let accountSession = null;
+let accountIntent = 'signin';
+function setAccountUI() {
+  const name = accountSession?.user?.email || 'Guest';
+  const sub = accountSession ? 'Full Experience' : 'Guest Mode';
+  const pn = $('profileName');
+  if (pn) pn.innerHTML = `${escapeHtml(name)}<small>${sub}</small>`;
+  document.body.classList.toggle('guest-mode', !accountSession);
 }
-
-function renderAttachments() {
-  attachmentPreview.innerHTML = '';
-  clearAttachmentsButton.hidden = selectedAttachments.length === 0;
-  selectedAttachments.forEach((item, index) => {
-    const card = document.createElement('div');
-    card.className = 'attachment-card';
-    if (item.type.startsWith('image/') && item.previewUrl) {
-      const img = document.createElement('img');
-      img.src = item.previewUrl;
-      img.alt = item.name;
-      card.appendChild(img);
-    } else {
-      const icon = document.createElement('div');
-      icon.className = 'attachment-file-icon';
-      icon.textContent = '📄';
-      card.appendChild(icon);
-    }
-    const meta = document.createElement('div');
-    meta.className = 'attachment-meta';
-    const name = document.createElement('span');
-    name.className = 'attachment-name';
-    name.textContent = item.name;
-    const size = document.createElement('span');
-    size.className = 'attachment-size';
-    size.textContent = formatFileSize(item.size);
-    meta.append(name, size);
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'attachment-remove';
-    remove.textContent = '✕';
-    remove.title = `Remove ${item.name}`;
-    remove.addEventListener('click', () => removeAttachment(index));
-    card.append(meta, remove);
-    attachmentPreview.appendChild(card);
-  });
+function openAccountGate(intent='signin') {
+  accountIntent=intent;
+  const gate=$('accountGate'); if(!gate) return;
+  gate.hidden=false;
+  $('signInTab').classList.toggle('active',intent==='signin'); $('signUpTab').classList.toggle('active',intent==='signup');
+  $('accountSubmit').textContent=intent==='signup'?'Create account ↗':'Sign in ↗';
+  $('accountPassword').setAttribute('autocomplete',intent==='signup'?'new-password':'current-password');
 }
-
-function removeAttachment(index) {
-  const [item] = selectedAttachments.splice(index, 1);
-  if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
-  renderAttachments();
+function closeAccountGate(){const g=$('accountGate'); if(g) g.hidden=true;}
+async function accountRequest(path, body){
+  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'Account request failed'); return d;
 }
-
-function addFiles(files) {
-  const incoming = Array.from(files);
-  incoming.forEach((file) => {
-    if (selectedAttachments.length >= 5) return;
-    if (file.size > 8 * 1024 * 1024) return;
-    if (selectedAttachments.some((item) => item.name === file.name && item.size === file.size)) return;
-    selectedAttachments.push({
-      name: file.name,
-      size: file.size,
-      type: file.type || 'application/octet-stream',
-      file,
-      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-    });
-  });
-  renderAttachments();
+async function finishAccountSession(data){
+  accountSession=data.session||null;
+  if(accountSession) localStorage.setItem(NOVA_SESSION_KEY,JSON.stringify(accountSession));
+  accountMode=accountSession?'account':'guest'; localStorage.setItem(NOVA_MODE_KEY,accountMode); setAccountUI(); closeAccountGate(); toast(accountSession?'NOVA full experience unlocked across supported devices.':'Running in guest mode.');
 }
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error('Unable to read file'));
-    reader.readAsDataURL(file);
-  });
+async function restoreAccount(){
+  try { const raw=localStorage.getItem(NOVA_SESSION_KEY); if(!raw) return setAccountUI(); accountSession=JSON.parse(raw); const r=await fetch('/api/auth/me',{headers:{Authorization:`Bearer ${accountSession.access_token}`}}); if(!r.ok) throw new Error('expired'); const d=await r.json(); accountSession.user=d.user; accountMode='account'; setAccountUI(); } catch { localStorage.removeItem(NOVA_SESSION_KEY); accountSession=null; accountMode='guest'; setAccountUI(); }
 }
-
-async function buildAttachmentPayload() {
-  const payload = [];
-  for (const item of selectedAttachments.slice(0, 5)) {
-    const supported = item.type.startsWith('image/') || ['text/plain', 'text/csv', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'].includes(item.type) || /\.(pdf|docx|xlsx|pptx|txt|csv)$/i.test(item.name);
-    if (!supported) {
-      payload.push({ name: item.name, type: item.type, unsupported: true });
-      continue;
-    }
-    const data = await fileToDataUrl(item.file);
-    payload.push({ name: item.name, type: item.type, data });
-  }
-  const totalSize = payload.reduce((sum, item) => sum + (item.data ? item.data.length : 0), 0);
-  if (totalSize > 22 * 1024 * 1024) {
-    throw new Error('Attachments are too large together. Please remove one or more files and try again.');
-  }
-  return payload;
+function setupIdentityLayer(){
+  $('signInTab')?.addEventListener('click',()=>openAccountGate('signin')); $('signUpTab')?.addEventListener('click',()=>openAccountGate('signup'));
+  $('continueGuest')?.addEventListener('click',closeAccountGate);
+  $('accountForm')?.addEventListener('submit',async e=>{e.preventDefault(); const status=$('accountStatus'); status.textContent='Connecting to NOVA Identity…'; try { const d=await accountRequest(accountIntent==='signup'?'/api/auth/signup':'/api/auth/signin',{email:$('accountEmail').value,password:$('accountPassword').value}); if(d.confirmationRequired){status.textContent='Check your email to confirm the account, then sign in.';return;} await finishAccountSession(d); } catch(err){status.textContent=err.message;} });
+  $('profileButton')?.addEventListener('contextmenu',e=>{e.preventDefault(); if(accountSession){localStorage.removeItem(NOVA_SESSION_KEY);accountSession=null;accountMode='guest';setAccountUI();toast('Signed out. Guest mode remains available.');} else openAccountGate('signin');});
+  $('profileButton')?.addEventListener('click',()=>{if(!accountSession) openAccountGate('signin');});
+  restoreAccount();
 }
-
-fileInput.addEventListener('change', () => {
-  addFiles(fileInput.files);
-  updateWorkspaceMode('ATTACHMENTS');
-  fileInput.value = '';
-});
-
-function setupMicrophone() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    micButton.title = 'Voice input is not supported by this browser.';
-    micStatus.textContent = 'Voice input is not supported by this browser.';
-    return;
-  }
-
-  recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = true;
-  recognition.lang = navigator.language || 'en-US';
-
-  recognition.onstart = () => {
-    isListening = true;
-    micButton.classList.add('listening');
-    micButton.setAttribute('aria-pressed', 'true');
-    micButton.innerHTML = '⏹️ Stop <span>Listening...</span>';
-    micStatus.textContent = 'Listening... speak clearly to NOVA.';
-    updateWorkspaceMode('VOICE INPUT');
-  };
-
-  recognition.onresult = (event) => {
-    let finalText = '';
-    let interimText = '';
-    for (let i = event.resultIndex; i < event.results.length; i += 1) {
-      const transcript = event.results[i][0].transcript;
-      if (event.results[i].isFinal) finalText += transcript;
-      else interimText += transcript;
-    }
-    if (finalText.trim()) {
-      const current = messageInput.value.trim();
-      messageInput.value = current ? `${current} ${finalText.trim()}` : finalText.trim();
-      if (liveVoiceMode) {
-        pendingLiveRequest = true;
-        submitAssistantMessage(true);
-      }
-    }
-    if (interimText.trim()) micStatus.textContent = `Hearing: ${interimText.trim()}`;
-  };
-
-  recognition.onerror = (event) => {
-    console.error('Microphone error:', event.error);
-    const messages = {
-      'not-allowed': 'Microphone permission was denied.',
-      'audio-capture': 'No microphone was found.',
-      'no-speech': 'No speech was detected.'
-    };
-    micStatus.textContent = messages[event.error] || 'Microphone input failed.';
-  };
-
-  recognition.onend = () => {
-    isListening = false;
-    micButton.classList.remove('listening');
-    micButton.setAttribute('aria-pressed', 'false');
-    micButton.innerHTML = '🎤 Mic <span>Speak to NOVA</span>';
-    if (!micStatus.textContent.startsWith('Microphone permission') && !micStatus.textContent.startsWith('No microphone')) {
-      micStatus.textContent = liveVoiceMode ? 'Live Voice is waiting for NOVA to respond.' : 'Microphone ready.';
-      if (!liveVoiceMode) updateWorkspaceMode('TEXT MODE');
-    }
-  };
-
-  micButton.addEventListener('click', () => {
-    if (!recognition) return;
-    if (isListening) {
-      recognition.stop();
-      return;
-    }
-    try {
-      recognition.start();
-    } catch (error) {
-      console.error(error);
-      micStatus.textContent = 'Microphone could not start. Try again.';
-    }
-  });
-}
-
-setupMicrophone();
-
-clearAttachmentsButton.addEventListener('click', () => {
-  selectedAttachments.forEach((item) => {
-    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-  });
-  selectedAttachments = [];
-  renderAttachments();
-});
-
-async function startCamera() {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    cameraMessage.textContent = 'Camera access is not supported by this browser.';
-    return;
-  }
-  try {
-    if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: cameraFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    });
-    cameraPreview.srcObject = cameraStream;
-    cameraMessage.textContent = 'Camera ready. Capture a photo to attach it to NOVA.';
-  } catch (error) {
-    console.error(error);
-    cameraMessage.textContent = 'Camera permission was denied or the camera is unavailable.';
-  }
-}
-
-function stopCamera() {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach((track) => track.stop());
-    cameraStream = null;
-  }
-  cameraPreview.srcObject = null;
-}
-
-cameraButton.addEventListener('click', async () => {
-  cameraModal.hidden = false;
-  updateWorkspaceMode('CAMERA');
-  await startCamera();
-});
-
-closeCameraButton.addEventListener('click', () => {
-  stopCamera();
-  cameraModal.hidden = true;
-});
-
-switchCameraButton.addEventListener('click', async () => {
-  cameraFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
-  await startCamera();
-});
-
-captureButton.addEventListener('click', () => {
-  if (!cameraStream) return;
-  const width = cameraPreview.videoWidth || 1280;
-  const height = cameraPreview.videoHeight || 720;
-  cameraCanvas.width = width;
-  cameraCanvas.height = height;
-  const context = cameraCanvas.getContext('2d');
-  context.drawImage(cameraPreview, 0, 0, width, height);
-  cameraCanvas.toBlob((blob) => {
-    if (!blob) return;
-    const file = new File([blob], `NOVA-Capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
-    addFiles([file]);
-    cameraMessage.textContent = 'Photo captured and attached.';
-  }, 'image/jpeg', 0.92);
-});
-
-cameraModal.addEventListener('click', (event) => {
-  if (event.target === cameraModal) {
-    stopCamera();
-    cameraModal.hidden = true;
-  }
-});
-
-window.addEventListener('beforeunload', () => {
-  selectedAttachments.forEach((item) => {
-    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-  });
-  stopCamera();
-});
-
-async function loadStatus() {
-  try {
-    const res = await fetch('/api/status');
-    const data = await res.json();
-    systemName.textContent = data.name || 'NOVA Ultimate';
-    systemVersion.textContent = data.version || '1.0.0';
-    featureCount.textContent = Array.isArray(data.features) ? data.features.length : '0';
-    groqStatus.textContent = data.groqConfigured ? 'Configured' : 'Missing';
-    voiceStatus.textContent = data.voiceConfigured ? 'ElevenLabs ready' : 'ElevenLabs not configured';
-    voiceStatus.classList.toggle('ready', Boolean(data.voiceConfigured));
-    speakButton.disabled = !data.voiceConfigured || !latestResponse;
-    systemBadge.textContent = data.status === 'operational' ? 'Operational' : 'Offline';
-    systemBadge.style.background = data.status === 'operational' ? 'rgba(34,197,94,0.12)' : 'rgba(248,113,113,0.12)';
-    systemBadge.style.color = data.status === 'operational' ? '#86efac' : '#fca5a5';
-    if (!latestResponse) {
-      responseBox.textContent = 'NOVA is monitoring the system and ready to assist.';
-    }
-  } catch (error) {
-    responseBox.textContent = 'Unable to load system status.';
-    console.error(error);
-  }
-}
-
-async function postJson(url, payload) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  return res.json();
-}
-
-async function submitAssistantMessage(fromLiveVoice = false) {
-  const message = messageInput.value.trim();
-  if (!message || (fromLiveVoice && pendingLiveRequest === false)) return;
-
-  pendingLiveRequest = false;
-  responseBox.textContent = liveVoiceMode ? 'NOVA is thinking...' : 'Thinking...';
-  try {
-    const attachments = await buildAttachmentPayload();
-    const attachmentNote = selectedAttachments.length
-      ? `\n\nThe user attached ${selectedAttachments.length} file(s): ${selectedAttachments.map((item) => item.name).join(', ')}.`
-      : '';
-    const unsupported = attachments.filter((item) => item.unsupported);
-    const data = await postJson('/assist', {
-      message: message + attachmentNote,
-      user_id: 'mobile-user',
-      persona: activePersona,
-      attachments
-    });
-    latestResponse = data.response || '';
-    const unsupportedNote = unsupported.length
-      ? `\n\nNote: ${unsupported.map((item) => item.name).join(', ')} is attached but NOVA could not extract readable content from it.`
-      : '';
-    responseBox.textContent = `${latestResponse || 'No response received.'}${unsupportedNote}`;
-    speakButton.disabled = !latestResponse;
-
-    if (liveVoiceMode && latestResponse) {
-      await speakText(latestResponse, true);
-    }
-  } catch (error) {
-    responseBox.textContent = 'There was an issue reaching NOVA.';
-    console.error(error);
-    if (liveVoiceMode) {
-      liveVoiceStatus.textContent = `Live Voice error: ${error.message || 'connection failed'}`;
-    }
-  }
-}
-
-document.getElementById('assistantForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  await submitAssistantMessage(false);
-});
-
-function startListening() {
-  if (!recognition || isListening || isSpeaking || !liveVoiceMode) return;
-  try {
-    recognition.start();
-    liveVoiceStatus.textContent = 'Listening... speak naturally to NOVA.';
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-function stopListening() {
-  if (recognition && isListening) recognition.stop();
-}
-
-async function speakText(text, live = false) {
-  if (!text) return;
-  isSpeaking = true;
-  if (live) liveVoiceStatus.textContent = 'NOVA is speaking...';
-  const original = speakButton.textContent;
-  speakButton.disabled = true;
-  speakButton.textContent = '🔊 Speaking...';
-  try {
-    const response = await fetch('/speak', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, persona: activePersona })
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || 'Voice request failed');
-    }
-    const blob = await response.blob();
-    const audioUrl = URL.createObjectURL(blob);
-    const audio = new Audio(audioUrl);
-    await new Promise((resolve, reject) => {
-      audio.onended = resolve;
-      audio.onerror = () => reject(new Error('Audio playback failed.'));
-      audio.play().catch(reject);
-    });
-    URL.revokeObjectURL(audioUrl);
-    if (live && liveVoiceMode) {
-      liveVoiceStatus.textContent = 'NOVA finished speaking. Listening again...';
-    }
-  } finally {
-    isSpeaking = false;
-    speakButton.disabled = !latestResponse;
-    speakButton.textContent = original;
-  }
-  if (live && liveVoiceMode) {
-    setTimeout(startListening, 250);
-  }
-}
-
-liveVoiceButton.addEventListener('click', () => {
-  if (!recognition) {
-    liveVoiceStatus.textContent = 'Live Voice is not supported by this browser.';
-    return;
-  }
-  liveVoiceMode = !liveVoiceMode;
-  updateWorkspaceMode(liveVoiceMode ? 'LIVE VOICE' : 'TEXT MODE');
-  liveVoiceButton.classList.toggle('active', liveVoiceMode);
-  liveVoiceButton.setAttribute('aria-pressed', String(liveVoiceMode));
-  liveVoiceButton.innerHTML = liveVoiceMode
-    ? '🟢 Live Voice <span>Conversation on</span>'
-    : '🔴 Live Voice <span>Conversation off</span>';
-
-  if (liveVoiceMode) {
-    liveVoiceStatus.textContent = 'Live Voice enabled. Listening...';
-    startListening();
-  } else {
-    stopListening();
-    liveVoiceStatus.textContent = 'Live Voice is off.';
-  }
-});
-
-document.getElementById('predictButton').addEventListener('click', async () => {
-  const message = document.getElementById('messageInput').value.trim() || 'create a new app';
-  try {
-    const data = await postJson('/predict', { user_id: 'mobile-user', message });
-    predictionsBox.innerHTML = (data.suggestions || []).map((s) => `
-      <div class="prediction-pill">
-        <span class="intent">${s.intent}</span>
-        <span class="confidence">${(s.confidence * 100).toFixed(0)}%</span>
-      </div>
-    `).join('') || 'No suggestions available.';
-  } catch (error) {
-    predictionsBox.textContent = 'Unable to load predictions.';
-    console.error(error);
-  }
-});
-
-document.querySelectorAll('.persona-btn').forEach((button) => {
-  button.addEventListener('click', () => {
-    activePersona = button.dataset.persona;
-    document.querySelectorAll('.persona-btn').forEach((item) => item.classList.toggle('active', item === button));
-    activePersonaTitle.textContent = activePersona.toUpperCase();
-  });
-});
-
-speakButton.addEventListener('click', async () => {
-  if (!latestResponse || speakButton.disabled) return;
-  try {
-    await speakText(latestResponse, false);
-  } catch (error) {
-    console.error(error);
-    voiceStatus.textContent = error.message;
-  }
-});
-
-document.getElementById('scanForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const url = document.getElementById('scanInput').value.trim();
-  if (!url) return;
-  try {
-    const data = await postJson('/scan-url', { url });
-    scanResult.textContent = JSON.stringify(data, null, 2);
-  } catch (error) {
-    scanResult.textContent = 'Scan failed.';
-    console.error(error);
-  }
-});
-
-statusButton.addEventListener('click', loadStatus);
-loadStatus();
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.novaInstallPrompt=e;toast('NOVA can be installed on this device. Open the browser menu to install.');});
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+setupIdentityLayer();
