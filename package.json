@@ -1,12 +1,13 @@
 {
   "name": "nova-ultimate",
-  "version": "21.0.0",
-  "description": "Open, guest-first next-generation AI assistant with persistent conversations, visible execution, creator access control, autonomous execution and sandboxed software development.",
+  "version": "21.2.0",
+  "description": "Universal, accessible, reliable next-generation AI assistant with mobile-first capabilities.",
   "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node tests-adaptive-recovery.test.js && node tests-autonomous-v13.test.js && node tests-builder-v15-unit.test.js",
+    "test": "node tests-adaptive-recovery.test.js && node tests-autonomous-v13.test.js && node tests-builder-v15-unit.test.js && node tests-ai-router.test.js && node tests-ai-task-router.test.js && node tests-provider-discovery.test.js && node tests-voice-engine.test.js && node tests-persistent-v21.test.js",
+    "test:discovery": "node tests-provider-discovery.test.js",
     "test:syntax": "node --check index.js && node --check core/agent-core.js && node --check core/autonomous-executor.js && node --check core/builder-engine.js && node --check core/job-engine.js && node --check core/recovery-engine.js && node --check core/tool-registry.js && node --check core/workspace-manager.js && node --check public/app.js"
   },
   "dependencies": {

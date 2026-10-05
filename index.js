@@ -16,6 +16,10 @@ import { AutonomousExecutor } from './core/autonomous-executor.js';
 import { WorkspaceManager } from './core/workspace-manager.js';
 import { BuilderEngine } from './core/builder-engine.js';
 import { PersistentStore } from './core/persistent-store.js';
+import { AIRouter } from './core/ai-router.js';
+import { VoiceEngine } from './core/voice-engine.js';
+import { NovaUniversal } from './core/nova-universal.js';
+import { ActionGateway } from './core/action-gateway.js';
 import AdmZip from 'adm-zip';
 import mammoth from 'mammoth';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
@@ -36,7 +40,11 @@ const jobs = new JobEngine({ maxJobs: 100 });
 const autonomous = new AutonomousExecutor({ agent: agentCore, jobs, tools, maxReplans: 2, maxSteps: 12, approvalRequired: true });
 const workspace = new WorkspaceManager({ root: join(__dirname, 'workspaces') });
 const builder = new BuilderEngine({ workspace });
+const aiRouter = new AIRouter();
+const voiceEngine = new VoiceEngine();
 const store = new PersistentStore({ root: join(__dirname, 'data', 'nova-store') });
+const universal = new NovaUniversal({ store });
+const actionGateway = new ActionGateway({ audit: event => store.audit(event) });
 await workspace.init();
 await store.init();
 const autonomousTasks = new Map();
@@ -149,11 +157,23 @@ let supabase = null;
 async function getSupabase() {
   if (supabase) return supabase;
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
   const { createClient } = await import('@supabase/supabase-js');
   supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   return supabase;
+}
+
+async function optionalUser(req,res,next){
+  const auth=String(req.headers.authorization||''); const token=auth.startsWith('Bearer ')?auth.slice(7):''; const client=await getSupabase();
+  if(client&&token){try{const {data,error}=await client.auth.getUser(token);if(!error&&data?.user)req.user=data.user;}catch{}}
+  next();
+}
+function ownedUserId(req, requested='guest'){
+  const wanted=String(requested||'guest');
+  if(wanted==='guest')return 'guest';
+  if(req.user?.id===wanted)return wanted;
+  throw new Error('A signed-in NOVA account is required for this private profile.');
 }
 
 async function requireUser(req, res, next) {
@@ -168,7 +188,7 @@ async function requireUser(req, res, next) {
 }
 
 app.get('/api/auth/config', async (_req, res) => {
-  const configured = Boolean(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const configured = Boolean(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   res.json({ configured, guestMode: true, fullExperience: configured ? 'account' : 'local' });
 });
 
@@ -204,19 +224,50 @@ app.get('/', (_req, res) => {
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-function roleFor(req){ const creator=process.env.NOVA_CREATOR_TOKEN && String(req.headers['x-nova-creator-token']||'')===String(process.env.NOVA_CREATOR_TOKEN); if(creator)return 'creator'; const viewer=process.env.NOVA_VIEWER_TOKEN && String(req.headers['x-nova-viewer-token']||'')===String(process.env.NOVA_VIEWER_TOKEN); return viewer?'viewer':'user'; }
-function requireAdvanced(req,res,next){ const role=roleFor(req); if(role==='creator'||role==='viewer'){req.novaRole=role;return next();} return res.status(403).json({error:'This NOVA capability is restricted to authorized users.'}); }
-function requireCreator(req,res,next){ if(roleFor(req)!=='creator')return res.status(403).json({error:'Creator authorization is required for this action.'}); req.novaRole='creator'; next(); }
+async function roleFor(req){
+  const creatorToken=process.env.NOVA_CREATOR_TOKEN && String(req.headers['x-nova-creator-token']||'')===String(process.env.NOVA_CREATOR_TOKEN);
+  if(creatorToken)return 'creator';
+  const viewerToken=process.env.NOVA_VIEWER_TOKEN && String(req.headers['x-nova-viewer-token']||'')===String(process.env.NOVA_VIEWER_TOKEN);
+  if(viewerToken)return 'viewer';
+  const creatorEmail=String(process.env.NOVA_CREATOR_EMAIL||'').trim().toLowerCase();
+  const auth=String(req.headers.authorization||'');
+  const token=auth.startsWith('Bearer ')?auth.slice(7):'';
+  if(creatorEmail && token){
+    try {
+      const client=await getSupabase();
+      const {data}=client ? await client.auth.getUser(token) : {data:null};
+      const email=String(data?.user?.email||'').trim().toLowerCase();
+      if(email && email===creatorEmail)return 'creator';
+    } catch {}
+  }
+  return 'user';
+}
+async function requireAdvanced(req,res,next){ const role=await roleFor(req); if(role==='creator'||role==='viewer'){req.novaRole=role;return next();} return res.status(403).json({error:'This NOVA capability is restricted to authorized users.'}); }
+async function requireCreator(req,res,next){ if(await roleFor(req)!=='creator')return res.status(403).json({error:'Creator authorization is required for this action.'}); req.novaRole='creator'; next(); }
 
+app.get('/api/capabilities', (req,res)=>res.json(universal.capabilities({mobile:String(req.query.mobile||'').toLowerCase()==='true'})));
+app.get('/api/profile', optionalUser, async (req,res)=>{try{const userId=ownedUserId(req,req.query.user_id);res.json(await universal.getProfile(userId));}catch(e){res.status(401).json({error:e.message})}});
+app.put('/api/profile', optionalUser, async (req,res)=>{try{const userId=ownedUserId(req,req.body?.user_id);const profile=await universal.updateProfile(userId,req.body?.profile||{});res.json(profile);}catch(e){res.status(401).json({error:e.message})}});
+app.post('/api/safety/check', (req,res)=>res.json(universal.checkAction(String(req.body?.action||'unknown'),req.body||{})));
+app.post('/api/actions/prepare', (req,res)=>res.json(actionGateway.prepare({action:req.body?.action,target:req.body?.target,details:req.body?.details,userId:String(req.body?.user_id||'guest')})));
+app.post('/api/actions/confirm', async (req,res)=>{try{res.json(await actionGateway.confirm(req.body?.plan,{userId:String(req.body?.user_id||'guest'),confirmed:Boolean(req.body?.confirmed)}));}catch(e){res.status(403).json({error:e.message})}});
+app.post('/api/proactive/evaluate', (req,res)=>res.json(universal.proactive({context:req.body?.context||{}})));
+app.get('/api/notifications', async (req,res)=>{try{res.json({notifications:await store.listNotifications(String(req.query.user_id||'guest'))});}catch(e){res.status(500).json({error:e.message})}});
+app.post('/api/notifications/:id/read', async (req,res)=>{try{await store.markNotification(req.params.id,String(req.body?.user_id||'guest'));res.json({ok:true});}catch(e){res.status(500).json({error:e.message})}});
+app.post('/api/devices/register', async (req,res)=>{try{const item=await store.registerDevice({userId:String(req.body?.user_id||'guest'),name:String(req.body?.name||'NOVA Device'),platform:String(req.body?.platform||'web'),capabilities:req.body?.capabilities||{},id:req.body?.id});res.json(item);}catch(e){res.status(400).json({error:e.message})}});
+app.get('/api/devices', async (req,res)=>{try{res.json({devices:await store.listDevices(String(req.query.user_id||'guest'))});}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
-    version: '21.0.0',
+    version: '21.1.0',
     status: 'operational',
-    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','read-only-restricted-access','access-audit'],
+    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','read-only-restricted-access','access-audit','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
     voiceConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
-    personas: ['nova', 'jarvis', 'friday']
+    voiceEngine: voiceEngine.status(),
+    personas: voiceEngine.voices().map((voice) => voice.id),
+    aiRouter: { paidMode: Boolean(process.env.NOVA_PAID_MODE === 'true'), providers: aiRouter.status() },
+    discovery: aiRouter.discovery.status()
   });
 });
 
@@ -280,14 +331,8 @@ app.post('/assist', async (req, res) => {
   }
 
   prediction.observe(user_id, message);
-  const saved = await store.getConversation(String(user_id), String(req.body?.conversation_id||''));
-  const recentContext = saved?.messages?.slice(-12).map(m=>({role:m.role,content:m.text})) || [];
-  if (!process.env.GROQ_API_KEY) {
-    return res.json({
-      response: 'NOVA Ultimate is online. Add GROQ_API_KEY in Render to enable AI responses.',
-      suggestions: prediction.predict(user_id, message)
-    });
-  }
+  const saved = await store.getConversation(String(user_id), String(req.body?.conversation_id || ''));
+  const recentContext = saved?.messages?.slice(-12).map(m => ({ role: m.role, content: m.text })) || [];
 
   try {
     const personaPrompts = {
@@ -297,9 +342,10 @@ app.post('/assist', async (req, res) => {
     };
     const selectedPersona = ['nova', 'jarvis', 'friday'].includes(String(persona).toLowerCase()) ? String(persona).toLowerCase() : 'nova';
 
-    const imageAttachments = attachments.filter((item) => item && typeof item.data === 'string' && String(item.type || '').startsWith('image/')).slice(0, 5);
+    const imageAttachments = attachments
+      .filter((item) => item && typeof item.data === 'string' && String(item.type || '').startsWith('image/'))
+      .slice(0, 5);
     const documentAttachments = attachments.filter((item) => item && typeof item.data === 'string').slice(0, 5);
-
     const userContent = [{ type: 'text', text: message }];
 
     for (const item of imageAttachments) {
@@ -331,43 +377,72 @@ app.post('/assist', async (req, res) => {
     }
 
     const hasImages = imageAttachments.length > 0;
-    const model = hasImages
-      ? (process.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b')
-      : (process.env.GROQ_MODEL || 'openai/gpt-oss-20b');
-
     const systemText = hasImages
       ? `${personaPrompts[selectedPersona]} You can analyze the user's attached images. Describe only what is actually visible, and clearly distinguish observations from guesses. If the user asks about text in an image, read it carefully.`
       : `${personaPrompts[selectedPersona]} Personality profile: ${process.env.NOVA_PERSONALITY || 'professional'}.`;
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'system', content: systemText }, ...recentContext.filter(m=>m.role==='user'||m.role==='nova').map(m=>({role:m.role==='nova'?'assistant':'user',content:m.content})), { role: 'user', content: userContent }],
-        temperature: 0.7
-      })
+    const routed = await aiRouter.chat({
+      needsVision: hasImages,
+      messages: [
+        { role: 'system', content: systemText },
+        ...recentContext
+          .filter(m => m.role === 'user' || m.role === 'nova')
+          .map(m => ({ role: m.role === 'nova' ? 'assistant' : 'user', content: m.content })),
+        { role: 'user', content: userContent }
+      ],
+      temperature: 0.7,
+      maxTokens: Number(process.env.NOVA_MAX_OUTPUT_TOKENS || 4096),
+      task: typeof req.body?.task === 'string' ? req.body.task : ''
     });
-    const data = await response.json();
-    if (!response.ok) return res.status(502).json({ error: 'Groq request failed', details: data.error?.message });
-    const responseText = data.choices?.[0]?.message?.content || 'No response returned.';
+
     const warning = extractionErrors.length ? `\n\nAttachment note: ${extractionErrors.join(' ')}` : '';
     res.json({
-      response: responseText + warning,
+      response: routed.text + warning,
+      provider: routed.provider,
+      model: routed.model,
+      task: routed.task,
       persona: selectedPersona,
       analyzedAttachments: attachments.map((item) => item.name).filter(Boolean),
-      extractedDocuments: attachments.filter((item) => item && !String(item.type || '').startsWith('image/')).map((item) => item.name).filter(Boolean)
+      extractedDocuments: attachments
+        .filter((item) => item && !String(item.type || '').startsWith('image/'))
+        .map((item) => item.name).filter(Boolean),
+      suggestions: prediction.predict(user_id, message)
     });
   } catch (error) {
     console.error('Assist request failed:', error);
-    res.status(502).json({ error: 'Unable to reach Groq' });
+    if (error.code === 'NO_PROVIDER') {
+      return res.status(503).json({
+        error: 'No configured free AI provider is available.',
+        providers: aiRouter.status()
+      });
+    }
+    return res.status(502).json({
+      error: 'All configured AI providers failed.',
+      details: error.message,
+      providers: aiRouter.status()
+    });
   }
 });
 
+app.get('/api/router/discovery', async (req, res) => {
+  try {
+    const task = typeof req.query?.task === 'string' ? req.query.task : 'general';
+    const needsVision = String(req.query?.vision || '').toLowerCase() === 'true';
+    const refresh = String(req.query?.refresh || '').toLowerCase() === 'true';
+    const status = await aiRouter.discoveryStatus({ refresh });
+    const models = await aiRouter.discoveredModels({ task, needsVision, freeOnly: !aiRouter.paidMode, limit: 20 });
+    res.json({ status, task, needsVision, models });
+  } catch (error) {
+    res.status(502).json({ error: error.message, status: aiRouter.discovery.status() });
+  }
+});
 
+app.post('/api/router/plan', (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message : '';
+  const task = typeof req.body?.task === 'string' ? req.body.task : '';
+  const needsVision = Boolean(req.body?.needsVision);
+  res.json(aiRouter.plan({ messages: [{ role: 'user', content: message }], needsVision, task }));
+});
 
 app.get('/api/chat', async (req,res)=>{ try{const userId=String(req.query.user_id||'mobile-user');res.json({conversations:await store.listConversations(userId)});}catch(e){res.status(500).json({error:e.message})} });
 app.get('/api/chat/:id', async (req,res)=>{ try{const userId=String(req.query.user_id||'mobile-user');const item=await store.getConversation(userId,req.params.id);if(!item)return res.status(404).json({error:'Conversation not found'});res.json(item);}catch(e){res.status(500).json({error:e.message})} });
@@ -555,61 +630,30 @@ app.get('/api/self-test', (_req, res) => {
     {name:'replanning',ok:Boolean(agentCore.replan(plan, plan.find(x=>x.id==='research'), new Error('Search provider unavailable'), {replans:0,usedStrategies:[]}))},
     {name:'static-frontend',ok:true}
   ];
-  res.json({ok:checks.every(c=>c.ok),version:'21.0.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
+  res.json({ok:checks.every(c=>c.ok),version:'21.1.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
+});
+
+app.get('/api/voices', (req, res) => {
+  res.json(voiceEngine.status());
 });
 
 app.post('/speak', async (req, res) => {
-  const { text, persona = 'nova' } = req.body || {};
-  if (typeof text !== 'string' || !text.trim()) {
-    return res.status(400).json({ error: 'text is required' });
-  }
-  if (!process.env.ELEVENLABS_API_KEY) {
-    return res.status(503).json({ error: 'ElevenLabs is not configured. Add ELEVENLABS_API_KEY in Render.' });
-  }
-
-  const voiceMap = {
-    nova: process.env.NOVA_VOICE_ID,
-    jarvis: process.env.JARVIS_VOICE_ID,
-    friday: process.env.FRIDAY_VOICE_ID
-  };
-  const selectedPersona = ['nova', 'jarvis', 'friday'].includes(String(persona).toLowerCase()) ? String(persona).toLowerCase() : 'nova';
-  const voiceId = voiceMap[selectedPersona];
-  if (!voiceId) {
-    return res.status(503).json({ error: `${selectedPersona.toUpperCase()} voice is not configured. Add its voice ID in Render.` });
-  }
-
+  const { text, persona = 'nova', speed } = req.body || {};
   try {
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'xi-api-key': process.env.ELEVENLABS_API_KEY
-      },
-      body: JSON.stringify({
-        text: text.slice(0, 5000),
-        model_id: process.env.ELEVENLABS_MODEL || 'eleven_flash_v2_5',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.15,
-          use_speaker_boost: true,
-          speed: 1.0
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const details = await response.text();
-      return res.status(502).json({ error: 'ElevenLabs request failed', details: details.slice(0, 500) });
-    }
-
-    const audio = Buffer.from(await response.arrayBuffer());
-    res.setHeader('Content-Type', 'audio/mpeg');
+    const result = await voiceEngine.speak({ text, voice: persona, speed });
+    res.setHeader('Content-Type', result.contentType);
     res.setHeader('Cache-Control', 'no-store');
-    res.send(audio);
+    res.setHeader('X-NOVA-Voice', result.voice);
+    res.setHeader('X-NOVA-Voice-Provider', result.provider);
+    return res.send(result.audio);
   } catch (error) {
-    console.error('Speech request failed:', error);
-    res.status(502).json({ error: 'Unable to reach ElevenLabs' });
+    console.error('NOVA voice engine failed:', error);
+    const status = error.code === 'INVALID_TEXT' ? 400 : error.code === 'VOICE_NOT_CONFIGURED' || error.code === 'NO_TTS_PROVIDER' ? 503 : 502;
+    return res.status(status).json({
+      error: error.message || 'NOVA Voice Engine could not generate speech.',
+      code: error.code || 'VOICE_ERROR',
+      voice: error.voice || String(persona || 'nova').toLowerCase()
+    });
   }
 });
 

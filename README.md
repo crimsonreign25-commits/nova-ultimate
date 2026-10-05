@@ -82,3 +82,19 @@ NOVA is intentionally being developed as an open, guest-first project. Account, 
 ## License
 
 MIT. See the `license` field in `package.json`.
+
+## NOVA 21.2 — Universal Assistant
+
+NOVA now includes a universal accessibility/personal-assistant layer, a mobile companion foundation, safe action gating, proactive assistance, offline request queuing, cross-device profile synchronization for authenticated accounts, and a minimal browser extension bridge.
+
+### Universal accessibility
+Large text, high contrast, reduced motion, live captions, voice-first interaction, focus mode, screen-reader announcements, keyboard shortcuts, and mobile/PWA guidance are built into the main interface.
+
+### Mobile
+The `android/` directory is a native Android companion foundation. It provides a launch surface and a permission-gated AccessibilityService boundary for future device assistance. It intentionally does not perform silent sensitive actions.
+
+### Browser
+The `extension/` directory contains a Manifest V3 launcher/bridge. It does not silently scrape or modify webpages.
+
+### Safety and reliability
+NOVA separates action planning from confirmation for high-risk operations, keeps persistent conversations, uses provider failover/recovery, and queues safe chat requests when connectivity is temporarily unavailable.

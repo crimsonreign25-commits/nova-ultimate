@@ -162,8 +162,16 @@
               </section>
 
               <section id="settingsPanel" class="panel settings-panel">
-                <div class="panel-title"><span>⚙</span><div><b>Settings</b><small>NOVA configuration</small></div></div>
-                <div class="settings-row"><span>System theme</span><b>Dark • Neon</b></div><div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>17.0.0</b></div>
+                <div class="panel-title"><span>⚙</span><div><b>Settings</b><small>NOVA configuration</small></div><i id="accessibilityStatus">Adaptive</i></div>
+                <div class="settings-row"><span>System theme</span><b>Dark • Neon</b></div><div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>21.2.0</b></div>
+                <div class="universal-settings" aria-labelledby="accessibilityTitle">
+                  <div class="universal-heading"><div><span class="agent-kicker">UNIVERSAL NOVA</span><h3 id="accessibilityTitle" tabindex="-1">Accessibility & Personal Assistant</h3><p>Make NOVA adapt to the way you see, hear, speak, move and work.</p></div><span class="universal-badge">ADAPTIVE</span></div>
+                  <div class="access-grid">
+                    <label><input id="accessLargeText" type="checkbox"> Large text</label><label><input id="accessHighContrast" type="checkbox"> High contrast</label><label><input id="accessReduceMotion" type="checkbox"> Reduce motion</label><label><input id="accessCaptions" type="checkbox" checked> Live captions</label><label><input id="accessVoiceOnly" type="checkbox"> Voice-first</label><label><input id="accessFocusMode" type="checkbox"> Focus mode</label>
+                  </div>
+                  <div class="universal-actions"><button id="accessibilityHelp" class="secondary-btn">Accessibility Guide</button><button id="accessibilityReset" class="ghost-btn">Reset</button><button id="installNova" class="primary-btn">Install NOVA</button></div>
+                  <div class="universal-status" id="universalStatus">NOVA is adapting to your device.</div>
+                </div>
               </section>
             </div>
           </div>
