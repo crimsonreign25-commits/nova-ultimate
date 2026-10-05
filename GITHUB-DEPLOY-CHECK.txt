@@ -1,0 +1,16 @@
+NOVA Ultimate 21.2 deployment check
+
+IMPORTANT: Upload ALL files and folders inside this ZIP to the GitHub repository ROOT.
+
+Before deploying, verify these paths exist in GitHub:
+- index.js
+- package.json
+- core/ai-router.js
+- core/ai-task-router.js
+- core/provider-discovery.js
+- core/agent-core.js
+- public/app.js
+
+If Render reports "Cannot find module /opt/render/project/src/core/ai-router.js",
+open the GitHub repository's core/ folder and confirm ai-router.js is actually present.
+Do not upload the outer ZIP folder as a nested repository folder.
