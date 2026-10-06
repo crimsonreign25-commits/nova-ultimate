@@ -263,7 +263,7 @@ app.get('/api/status', (_req, res) => {
     status: 'operational',
     features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','read-only-restricted-access','access-audit','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
-    voiceConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
+    voiceConfigured: Boolean(voiceEngine.status().ready),
     voiceEngine: voiceEngine.status(),
     personas: voiceEngine.voices().map((voice) => voice.id),
     aiRouter: { paidMode: Boolean(process.env.NOVA_PAID_MODE === 'true'), providers: aiRouter.status() },
@@ -641,16 +641,16 @@ app.post('/speak', async (req, res) => {
   const { text, persona = 'nova', speed } = req.body || {};
   try {
     const result = await voiceEngine.speak({ text, voice: persona, speed });
-    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-NOVA-Voice', result.voice);
     res.setHeader('X-NOVA-Voice-Provider', result.provider);
-    return res.send(result.audio);
+    return res.json(result);
   } catch (error) {
     console.error('NOVA voice engine failed:', error);
-    const status = error.code === 'INVALID_TEXT' ? 400 : error.code === 'VOICE_NOT_CONFIGURED' || error.code === 'NO_TTS_PROVIDER' ? 503 : 502;
+    const status = error.code === 'INVALID_TEXT' ? 400 : 500;
     return res.status(status).json({
-      error: error.message || 'NOVA Voice Engine could not generate speech.',
+      error: error.message || 'NOVA Voice Core could not prepare speech.',
       code: error.code || 'VOICE_ERROR',
       voice: error.voice || String(persona || 'nova').toLowerCase()
     });
