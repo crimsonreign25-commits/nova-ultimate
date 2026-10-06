@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { CodeGenerator } from './code-generator.js';
+import { listTemplates } from './project-templates.js';
+const templates = listTemplates();
+assert.equal(templates.length, 6);
+const generator = new CodeGenerator();
+const project = generator.generate('NOVA School Portal', { template: 'dashboard', framework: 'react' });
+assert.equal(project.name, 'nova-school-portal');
+assert.ok(project.files.some(f => f.path === 'index.html'));
+assert.ok(project.files.every(f => f.content.includes('nova-school-portal')));
+console.log('NOVA code generator tests PASS');

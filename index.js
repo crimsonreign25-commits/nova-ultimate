@@ -259,7 +259,7 @@ app.get('/api/devices', async (req,res)=>{try{res.json({devices:await store.list
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
-    version: '21.1.0',
+    version: '21.2.1',
     status: 'operational',
     features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','read-only-restricted-access','access-audit','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
@@ -630,7 +630,7 @@ app.get('/api/self-test', (_req, res) => {
     {name:'replanning',ok:Boolean(agentCore.replan(plan, plan.find(x=>x.id==='research'), new Error('Search provider unavailable'), {replans:0,usedStrategies:[]}))},
     {name:'static-frontend',ok:true}
   ];
-  res.json({ok:checks.every(c=>c.ok),version:'21.1.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
+  res.json({ok:checks.every(c=>c.ok),version:'21.2.1',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
 });
 
 app.get('/api/voices', (req, res) => {
