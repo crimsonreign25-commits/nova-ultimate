@@ -1,6 +1,14 @@
 const $ = (id) => document.getElementById(id);
+function novaReadStorage(key, fallback = null) {
+  try { const value = localStorage.getItem(key); return value === null ? fallback : value; }
+  catch { return fallback; }
+}
+function novaReadStoredJson(key, fallback) {
+  try { const value = novaReadStorage(key, null); return value === null ? fallback : JSON.parse(value); }
+  catch { return fallback; }
+}
 const USER_ID = 'mobile-user';
-let activePersona = localStorage.getItem('nova_persona') || 'nova';
+let activePersona = novaReadStorage('nova_persona', 'nova') || 'nova';
 let latestResponse = '';
 let selectedAttachments = [];
 let recognition = null;
@@ -9,9 +17,32 @@ let liveVoiceMode = false;
 let isSpeaking = false;
 let cameraStream = null;
 let cameraFacingMode = 'environment';
-let conversations = JSON.parse(localStorage.getItem('nova_conversations') || '[]');
-let memories = JSON.parse(localStorage.getItem('nova_memories') || '[]');
+let conversations = novaReadStoredJson('nova_conversations', []);
+let memories = novaReadStoredJson('nova_memories', []);
 let currentConversation = { id: crypto.randomUUID?.() || String(Date.now()), title: 'New Chat', messages: [] };
+let latestAutonomousTaskId = null;
+
+// Bind chat immediately. Function declarations are hoisted, so sendMessage is
+// callable here; this avoids losing the Send action if optional setup later fails.
+const novaComposerForm = $('assistantForm');
+const novaMessageInput = $('messageInput');
+if (novaComposerForm && !novaComposerForm.dataset.novaSubmitBound) {
+  novaComposerForm.dataset.novaSubmitBound = 'true';
+  novaComposerForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    sendMessage().catch((error) => { console.error('NOVA send failed:', error); toast(error?.message || 'NOVA could not send that message.'); });
+  });
+}
+if (novaMessageInput && !novaMessageInput.dataset.novaShortcutBound) {
+  novaMessageInput.dataset.novaShortcutBound = 'true';
+  novaMessageInput.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      sendMessage().catch((error) => { console.error('NOVA send failed:', error); toast(error?.message || 'NOVA could not send that message.'); });
+    }
+  });
+}
+
 
 function saveState(){ localStorage.setItem('nova_conversations', JSON.stringify(conversations.slice(-30))); localStorage.setItem('nova_memories', JSON.stringify(memories.slice(-30))); localStorage.setItem('nova_persona', activePersona); updateMemoryUI(); }
 function toast(message){ const el=$('toast'); el.textContent=message; el.hidden=false; clearTimeout(window.__novaToast); window.__novaToast=setTimeout(()=>el.hidden=true,2600); }
@@ -28,7 +59,46 @@ function addFiles(files){ Array.from(files).forEach(file=>{if(selectedAttachment
 function fileToDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
 async function buildAttachmentPayload(){const out=[];for(const item of selectedAttachments){const supported=item.type.startsWith('image/')||/\.(pdf|docx|xlsx|pptx|txt|csv)$/i.test(item.name)||['text/plain','text/csv','application/pdf'].includes(item.type);if(!supported){out.push({name:item.name,type:item.type,unsupported:true});continue}out.push({name:item.name,type:item.type,data:await fileToDataUrl(item.file)});}return out;}
 async function postJson(url,payload){const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||`Request failed (${res.status})`);return data;}
-async function sendMessage(prefilled=null){const input=$('messageInput');const message=(prefilled??input.value).trim();if(!message&&!selectedAttachments.length)return; if(isSpeaking)return; const attachments=await buildAttachmentPayload(); currentConversation.messages.push({role:'user',text:message||'Analyze my attachments.',at:Date.now()}); if(currentConversation.title==='New Chat')currentConversation.title=message.slice(0,44)||'Attachment analysis'; addChatMessage('user',message||'Analyze my attachments.'); input.value=''; setThinking(true); $('sendButton')?.setAttribute('disabled','disabled'); try{const data=await postJson('/assist',{message:message||'Analyze my attachments.',user_id:USER_ID,persona:activePersona,attachments});latestResponse=data.response||'No response returned.';currentConversation.messages.push({role:'nova',text:latestResponse,at:Date.now()});addChatMessage('nova',latestResponse); latestResponse=data.response||''; if(liveVoiceMode&&latestResponse)await speakText(latestResponse,true); }catch(error){addChatMessage('nova',`I hit a connection issue: ${error.message}`);toast(error.message);}finally{setThinking(false);renderHistory();saveState();$('sendButton')?.removeAttribute('disabled');}}
+async function sendMessage(prefilled=null) {
+  const input = $('messageInput');
+  if (!input) { toast('NOVA chat input is unavailable. Please refresh the page.'); return; }
+  const message = String(prefilled ?? input.value ?? '').trim();
+  if (!message && !selectedAttachments.length) return;
+  if (isSpeaking) return;
+  const sendButton = $('sendButton');
+  if (sendButton) sendButton.disabled = true;
+  try {
+    if (!navigator.onLine) {
+      if (message) await queueOfflineMessage(message);
+      input.value = '';
+      return;
+    }
+    const attachments = await buildAttachmentPayload();
+    const visibleMessage = message || 'Analyze my attachments.';
+    currentConversation.messages.push({role:'user', text:visibleMessage, at:Date.now()});
+    if (currentConversation.title === 'New Chat') currentConversation.title = message.slice(0,44) || 'Attachment analysis';
+    addChatMessage('user', visibleMessage);
+    input.value = '';
+    setThinking(true);
+    const data = await postJson('/assist', {message:visibleMessage, user_id:USER_ID, persona:activePersona, attachments});
+    latestResponse = data.response || 'No response returned.';
+    currentConversation.messages.push({role:'nova', text:latestResponse, at:Date.now()});
+    addChatMessage('nova', latestResponse);
+    latestResponse = data.response || '';
+    if (liveVoiceMode && latestResponse) await speakText(latestResponse, true);
+  } catch (error) {
+    console.error('NOVA send failed:', error);
+    const errorText = `I hit a connection issue: ${error?.message || 'Please try again.'}`;
+    if ($('chatFeed')) addChatMessage('nova', errorText);
+    toast(error?.message || 'NOVA could not send that message.');
+  } finally {
+    setThinking(false);
+    renderHistory();
+    try { await saveState(); } catch (error) { console.warn('NOVA local save failed:', error); }
+    if (sendButton) sendButton.disabled = false;
+  }
+}
+
 function renderHistory(){const list=$('historyList');list.innerHTML='';const items=[...conversations].reverse().slice(0,8);if(!items.length){list.innerHTML='<div class="history-empty">No saved conversations yet.</div>';return;}items.forEach((c)=>{const b=document.createElement('button');b.textContent=c.title||'Conversation';const s=document.createElement('small');s.textContent=new Date(c.messages?.at(-1)?.at||Date.now()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});b.append(s);b.onclick=()=>{archiveCurrent();currentConversation={...c};renderConversation();scrollTo('assistantWorkspace');};list.append(b);});}
 function updateMemoryUI(){ $('memoryCount').textContent=memories.length; $('historyCount').textContent=conversations.length+(currentConversation.messages.length?1:0); $('messageCount').textContent=conversations.reduce((n,c)=>n+(c.messages?.length||0),0)+(currentConversation.messages?.length||0); const box=$('memoryItems');box.innerHTML='';(memories.length?memories:['No saved memories yet.']).slice(-8).forEach(m=>{const s=document.createElement('span');s.textContent=m.text||m;box.append(s);});}
 async function loadStatus(){try{const d=await fetch('/api/status').then(r=>r.json());$('groqStatus').textContent=d.groqConfigured?'Connected':'Not configured';$('voiceStatus').textContent=d.voiceConfigured?'Ready':'Not configured';$('providerStatus').textContent=d.groqConfigured?'Groq connected':'Add GROQ_API_KEY';$('settingsVoice').textContent=d.voiceConfigured?'ElevenLabs ready':'Not configured';}catch{ $('groqStatus').textContent='Offline';$('voiceStatus').textContent='Offline';}}
@@ -84,7 +154,7 @@ function setupMicrophone(){const SR=window.SpeechRecognition||window.webkitSpeec
 async function speakText(text,live=false){if(!text||isSpeaking)return;isSpeaking=true;try{const r=await fetch('/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,persona:activePersona})});if(!r.ok)throw new Error((await r.json()).error||'Voice request failed');const url=URL.createObjectURL(await r.blob());const audio=new Audio(url);if(live)$('liveVoiceStatus').textContent='NOVA is speaking…';await new Promise((resolve,reject)=>{audio.onended=resolve;audio.onerror=reject;audio.play().catch(reject)});URL.revokeObjectURL(url);}catch(e){toast(e.message)}finally{isSpeaking=false;if(live&&liveVoiceMode){$('liveVoiceStatus').textContent='Listening again…';setTimeout(()=>{if(!isListening&&recognition)try{recognition.start()}catch{}},250);}}}
 function setupLiveVoice(){$('liveVoiceButton').onclick=()=>{if(!recognition){toast('Live Voice is not supported here.');return}liveVoiceMode=!liveVoiceMode;$('liveVoiceButton').classList.toggle('active',liveVoiceMode);$('liveVoiceStatus').textContent=liveVoiceMode?'Live Voice enabled. Listening…':'Live Voice is off.';updateMode(liveVoiceMode?'LIVE VOICE':'TEXT MODE');if(liveVoiceMode&&!isListening)try{recognition.start()}catch{}else if(!liveVoiceMode&&isListening)recognition.stop();};$('speakButton').onclick=()=>speakText(latestResponse,false);}
 function setupCamera(){const modal=$('cameraModal');$('cameraButton').onclick=async()=>{modal.hidden=false;updateMode('CAMERA');try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cameraFacingMode,width:{ideal:1280},height:{ideal:720}},audio:false});$('cameraPreview').srcObject=cameraStream;$('cameraMessage').textContent='Camera ready. Capture a photo to attach it to NOVA.';}catch{$('cameraMessage').textContent='Camera permission was denied or unavailable.'}};function close(){cameraStream?.getTracks().forEach(t=>t.stop());cameraStream=null;modal.hidden=true;}$('closeCamera').onclick=close;$('switchCameraButton').onclick=async()=>{cameraFacingMode=cameraFacingMode==='environment'?'user':'environment';close();$('cameraButton').click()};$('captureButton').onclick=()=>{if(!cameraStream)return;const v=$('cameraPreview');const c=$('cameraCanvas');c.width=v.videoWidth||1280;c.height=v.videoHeight||720;c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(blob=>{if(blob){addFiles([new File([blob],`NOVA-Capture-${Date.now()}.jpg`,{type:'image/jpeg'})]);$('cameraMessage').textContent='Photo captured and attached.'}},'image/jpeg',.92)};}
-$('assistantForm').addEventListener('submit',e=>{e.preventDefault();sendMessage()});$('messageInput').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendMessage()}});$('fileInput').addEventListener('change',e=>{addFiles(e.target.files);e.target.value=''});$('clearAttachments').onclick=()=>{selectedAttachments.forEach(x=>x.previewUrl&&URL.revokeObjectURL(x.previewUrl));selectedAttachments=[];renderAttachments()};$('newChat').onclick=newChat;$('clearConversation').onclick=newChat;$('mobileMenu').onclick=()=>$('commandRail').classList.toggle('open');$('uploadFile').onclick=()=>$('fileInput').click();$('takePhoto').onclick=()=>$('cameraButton').click();$('globalSearch').onclick=()=>{scrollTo('researchPanel');$('researchInput').focus()};$('notificationButton').onclick=()=>toast('NOVA system status: operational.');$('profileButton').onclick=()=>scrollTo('voiceWorkspace');$('railPersona').onclick=()=>scrollTo('voiceWorkspace');$('researchButton').onclick=()=>searchWeb($('researchInput').value);$('researchInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchWeb(e.target.value)}});$('saveMemory').onclick=()=>{const text=prompt('What should NOVA remember about this conversation?');if(text?.trim()){memories.push({text:text.trim(),at:Date.now()});saveState();toast('Memory saved locally.')}};$('clearMemory').onclick=()=>{if(confirm('Clear NOVA local memory?')){memories=[];saveState();toast('Local memory cleared.')}};$('scanForm').addEventListener('submit',async e=>{e.preventDefault();try{$('scanResult').textContent='Scanning…';const d=await postJson('/scan-url',{url:$('scanInput').value});$('scanResult').textContent=JSON.stringify(d,null,2)}catch(err){$('scanResult').textContent=err.message}});$('viewAllHistory').onclick=()=>{scrollTo('historyPanel');toast(`${conversations.length} saved conversations in this browser.`)};
+$('fileInput').addEventListener('change',e=>{addFiles(e.target.files);e.target.value=''});$('clearAttachments').onclick=()=>{selectedAttachments.forEach(x=>x.previewUrl&&URL.revokeObjectURL(x.previewUrl));selectedAttachments=[];renderAttachments()};$('newChat').onclick=newChat;$('clearConversation').onclick=newChat;$('mobileMenu').onclick=()=>$('commandRail').classList.toggle('open');$('uploadFile').onclick=()=>$('fileInput').click();$('takePhoto').onclick=()=>$('cameraButton').click();$('globalSearch').onclick=()=>{scrollTo('researchPanel');$('researchInput').focus()};$('notificationButton').onclick=()=>toast('NOVA system status: operational.');$('profileButton').onclick=()=>scrollTo('voiceWorkspace');$('railPersona').onclick=()=>scrollTo('voiceWorkspace');$('researchButton').onclick=()=>searchWeb($('researchInput').value);$('researchInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchWeb(e.target.value)}});$('saveMemory').onclick=()=>{const text=prompt('What should NOVA remember about this conversation?');if(text?.trim()){memories.push({text:text.trim(),at:Date.now()});saveState();toast('Memory saved locally.')}};$('clearMemory').onclick=()=>{if(confirm('Clear NOVA local memory?')){memories=[];saveState();toast('Local memory cleared.')}};$('scanForm').addEventListener('submit',async e=>{e.preventDefault();try{$('scanResult').textContent='Scanning…';const d=await postJson('/scan-url',{url:$('scanInput').value});$('scanResult').textContent=JSON.stringify(d,null,2)}catch(err){$('scanResult').textContent=err.message}});$('viewAllHistory').onclick=()=>{scrollTo('historyPanel');toast(`${conversations.length} saved conversations in this browser.`)};
 setupNav();setupPrompts();setupPersonas();setupReferenceControls();setupTools();setupCommandCenter();setupBuilder();$('coreSignal').textContent='READY • AWAITING OBJECTIVE';setupMicrophone();setupLiveVoice();setupCamera();renderConversation();renderHistory();updateMemoryUI();loadStatus();
 
 
