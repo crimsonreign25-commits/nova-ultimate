@@ -103,3 +103,36 @@
 .advanced-nav{display:none !important;}
 .execution-progress{margin:12px 18px;padding:14px 16px;border:1px solid rgba(90,220,255,.16);border-radius:16px;background:rgba(5,15,28,.72);display:grid;gap:8px}.exec-step{display:flex;align-items:center;gap:10px;font-size:13px;color:#71859d}.exec-step.active{color:#bdefff}.exec-step.done{color:#91e8c5}.exec-step span{width:20px;text-align:center}.final-result{margin:12px 18px;padding:16px;border:1px solid rgba(75,224,255,.24);border-radius:18px;background:linear-gradient(135deg,rgba(7,25,42,.92),rgba(8,18,32,.82));display:grid;gap:6px}.final-result b{font-size:14px;color:#d9f8ff}.final-result span{font-size:12px;color:#87a0b7}.final-result button{justify-self:start;margin-top:5px}.advanced-nav{display:none!important}
 .history-search{width:100%;margin:8px 0 10px;padding:9px 11px;border-radius:10px;border:1px solid rgba(120,180,220,.15);background:rgba(4,12,22,.55);color:inherit}.history-item{display:flex;gap:6px;align-items:stretch}.history-item>button:first-child{flex:1;text-align:left}.history-more{width:38px!important;padding:0!important;opacity:.65}.history-more:hover{opacity:1}
+/* NOVA FIX: Keep the Send button visible */
+#assistantForm .composer-tools {
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#assistantForm #sendButton.send-btn {
+  display: inline-grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  flex: 0 0 42px !important;
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  margin-left: auto !important;
+  padding: 0 !important;
+  place-items: center;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #128cff, #1450ff) !important;
+  color: #fff !important;
+  font-size: 22px !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 22px rgba(24, 118, 255, .42);
+  z-index: 10;
+}
+
+#assistantForm #sendButton:disabled {
+  opacity: .65 !important;
+  cursor: wait !important;
+}
