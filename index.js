@@ -215,7 +215,18 @@ app.post('/api/auth/signin', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message || 'Unable to sign in.' }); }
 });
 
-app.get('/api/auth/me', requireUser, (req, res) => res.json({ authenticated: true, user: { id: req.user.id, email: req.user.email } }));
+app.get('/api/auth/me', requireUser, async (req, res) => {
+  // Creator status is derived server-side from the verified Supabase identity.
+  // Never accept a role supplied by the browser.
+  const role = await roleFor(req);
+  const metadata = req.user.user_metadata || {};
+  const name = String(metadata.full_name || metadata.name || metadata.display_name || '').trim();
+  res.json({
+    authenticated: true,
+    user: { id: req.user.id, email: req.user.email, name },
+    access: { role, label: role === 'creator' ? 'Creator' : role === 'viewer' ? 'Authorised Personnel' : 'User' }
+  });
+});
 
 
 app.get('/', (_req, res) => {
@@ -230,16 +241,20 @@ async function roleFor(req){
   const viewerToken=process.env.NOVA_VIEWER_TOKEN && String(req.headers['x-nova-viewer-token']||'')===String(process.env.NOVA_VIEWER_TOKEN);
   if(viewerToken)return 'viewer';
   const creatorEmail=String(process.env.NOVA_CREATOR_EMAIL||'').trim().toLowerCase();
+  const creatorUserId=String(process.env.NOVA_CREATOR_USER_ID||'').trim();
   const auth=String(req.headers.authorization||'');
   const token=auth.startsWith('Bearer ')?auth.slice(7):'';
-  if(creatorEmail && token){
+  let verifiedUser=req.user || null;
+  if(!verifiedUser && token){
     try {
       const client=await getSupabase();
-      const {data}=client ? await client.auth.getUser(token) : {data:null};
-      const email=String(data?.user?.email||'').trim().toLowerCase();
-      if(email && email===creatorEmail)return 'creator';
+      const {data,error}=client ? await client.auth.getUser(token) : {data:null,error:new Error('Supabase is not configured')};
+      if(!error && data?.user) verifiedUser=data.user;
     } catch {}
   }
+  if(verifiedUser?.id && creatorUserId && verifiedUser.id===creatorUserId)return 'creator';
+  const verifiedEmail=String(verifiedUser?.email||'').trim().toLowerCase();
+  if(creatorEmail && verifiedEmail && verifiedEmail===creatorEmail)return 'creator';
   return 'user';
 }
 async function requireAdvanced(req,res,next){ const role=await roleFor(req); if(role==='creator'||role==='viewer'){req.novaRole=role;return next();} return res.status(403).json({error:'This NOVA capability is restricted to authorized users.'}); }
@@ -259,11 +274,11 @@ app.get('/api/devices', async (req,res)=>{try{res.json({devices:await store.list
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
-    version: '21.2.1',
+    version: '21.2.2',
     status: 'operational',
     features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','read-only-restricted-access','access-audit','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
-    voiceConfigured: Boolean(voiceEngine.status().ready),
+    voiceConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
     voiceEngine: voiceEngine.status(),
     personas: voiceEngine.voices().map((voice) => voice.id),
     aiRouter: { paidMode: Boolean(process.env.NOVA_PAID_MODE === 'true'), providers: aiRouter.status() },
@@ -641,16 +656,16 @@ app.post('/speak', async (req, res) => {
   const { text, persona = 'nova', speed } = req.body || {};
   try {
     const result = await voiceEngine.speak({ text, voice: persona, speed });
-    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Type', result.contentType);
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-NOVA-Voice', result.voice);
     res.setHeader('X-NOVA-Voice-Provider', result.provider);
-    return res.json(result);
+    return res.send(result.audio);
   } catch (error) {
     console.error('NOVA voice engine failed:', error);
-    const status = error.code === 'INVALID_TEXT' ? 400 : 500;
+    const status = error.code === 'INVALID_TEXT' ? 400 : error.code === 'VOICE_NOT_CONFIGURED' || error.code === 'NO_TTS_PROVIDER' ? 503 : 502;
     return res.status(status).json({
-      error: error.message || 'NOVA Voice Core could not prepare speech.',
+      error: error.message || 'NOVA Voice Engine could not generate speech.',
       code: error.code || 'VOICE_ERROR',
       voice: error.voice || String(persona || 'nova').toLowerCase()
     });
