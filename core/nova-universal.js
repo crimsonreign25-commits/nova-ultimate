@@ -36,7 +36,7 @@ export class NovaUniversal {
   }
   capabilities({ mobile=false }={}) {
     return {
-      version: '21.2.1',
+      version: '21.2.0',
       universalAccessibility: true,
       mobileAssistant: true,
       pwa: true,
