@@ -1,0 +1,5 @@
+plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
+
+android { namespace 'com.nova.ultimate'; compileSdk 35
+    defaultConfig { applicationId 'com.nova.ultimate'; minSdk 26; targetSdk 35; versionCode 212; versionName '21.2.1' }
+}

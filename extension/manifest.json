@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "NOVA Ultimate Assistant",
+  "version": "21.2.1",
+  "description": "Bring NOVA's accessible assistant controls to the browser.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://nova-ultimate-8scp.onrender.com/*"],
+  "action": {"default_title": "Open NOVA"},
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [{"matches": ["<all_urls>"], "js": ["content.js"], "run_at": "document_idle"}]
+}
