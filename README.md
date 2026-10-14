@@ -106,3 +106,23 @@ CREATOR IDENTITY (IMPORTANT)
 4. Save changes and redeploy. Sign out of NOVA, then sign in again.
 5. The profile should show “Creator • Full Experience” and a toast confirming Creator access. If it still shows “User”, check the email spelling and Render deployment logs.
 Creator status is determined by the server from a verified Supabase session. A role displayed in the browser is not an authorization mechanism. Do not expose the Supabase service-role key or creator token in frontend code or commit secrets to GitHub.
+
+
+## NOVA 21.2.4 — Personalization Studio
+
+- Adds Appearance settings for Premium Glass, Holographic, Minimal, Professional, Immersive, and Classic Chat styles.
+- Adds theme choices: Midnight, Aurora, Nebula, Emerald, Sunset, Ocean, Forest, Light, and Follow Device.
+- Adds hologram representation choices: Living Avatar, Energy Orb, Geometric AI, Abstract Lightform, Minimal Glow, or Off.
+- Adds full/subtle/reduced motion controls and compact/comfortable/spacious layout density.
+- Stores appearance preferences locally and provides a reset-to-default control.
+- Keeps the active persona's identity colors while adapting the hologram to the selected representation.
+
+These settings are a frontend implementation; platform-specific appearance parity, spoken login greetings, and live device behavior still require end-to-end testing before release.
+
+## NOVA 21.3.0 role access and native voice
+
+NOVA uses server-verified access levels: Guest, User, Authorised Personnel, and Creator. Configure the Creator identity with `NOVA_CREATOR_EMAIL` or `NOVA_CREATOR_USER_ID`; optional comma-separated Creator allowlists use `NOVA_CREATOR_USER_IDS`. Assign Authorised Personnel with `NOVA_AUTHORISED_EMAILS` or `NOVA_AUTHORISED_USER_IDS`. These values are server-side environment variables, not frontend settings. Authorised Personnel get restricted read-only access; Creator-only write routes remain backend-protected.
+
+The default speech path uses the browser/device native Speech Synthesis API and requires no paid voice API. The server TTS adapter remains optional and is used as a fallback only when native speech is unavailable. Speech recognition and camera support still depend on browser/device permissions and HTTPS.
+
+Run `npm run test:syntax`, `npm test`, and `npm run test:creator-identity` before deployment. Runtime testing with configured Supabase/provider credentials and real device permissions is still required for release sign-off.

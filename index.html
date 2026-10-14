@@ -9,11 +9,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/nova-192.png" />
+  <link rel="apple-touch-icon" href="/icons/nova-192.png" />
   <title>NOVA Ultimate</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=21.3.0-role-access" />
 </head>
 <body>
+  <a class="skip-link" href="#assistantWorkspace">Skip to NOVA conversation</a>
+  <div id="srAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
   <div class="nova-bg" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div class="app-shell">
     <div id="accountGate" class="account-gate" hidden>
@@ -22,7 +24,7 @@
         <h2>Unlock the full NOVA experience</h2>
         <p>Use NOVA as a guest immediately, or create an account to carry your NOVA experience across devices.</p>
         <div class="account-tabs"><button id="signInTab" class="active">Sign in</button><button id="signUpTab">Create account</button></div>
-        <form id="accountForm"><input id="accountEmail" type="email" placeholder="Email" autocomplete="email" required/><input id="accountPassword" type="password" placeholder="Password" minlength="8" autocomplete="current-password" required/><button class="agent-launch" type="submit" id="accountSubmit">Continue ↗</button></form>
+        <form id="accountForm"><input id="accountEmail" type="email" placeholder="Email" autocomplete="email" required/><input id="accountPassword" type="password" placeholder="Password" minlength="8" autocomplete="current-password" required/><label class="password-visibility"><input id="togglePasswordVisibility" type="checkbox" aria-controls="accountPassword"/> <span>Show password</span></label><button class="agent-launch" type="submit" id="accountSubmit">Continue ↗</button></form>
         <button id="continueGuest" class="ghost-btn">Continue as guest</button>
         <div id="accountStatus" class="account-status"></div>
       </div>
@@ -39,18 +41,18 @@
         <button class="rail-btn" data-target="attachmentsWorkspace"><span class="rail-icon">▣</span><span>Files</span></button>
         <button class="rail-btn" data-target="voiceWorkspace"><span class="rail-icon">◉</span><span>Voice</span></button>
         <button class="rail-btn" data-target="securityWorkspace"><span class="rail-icon">◇</span><span>Security</span></button>
-        <button class="rail-btn" data-target="commandPanel"><span class="rail-icon">⌘</span><span>Command Center</span></button><button class="rail-btn" data-target="agentPanel"><span class="rail-icon">✦</span><span>Agent Core</span></button><button class="rail-btn" data-target="builderPanel"><span class="rail-icon">⌘</span><span>Builder Mode</span></button><button class="rail-btn" data-target="settingsPanel"><span class="rail-icon">⚙</span><span>Settings</span></button>
+        <button class="rail-btn" data-target="commandPanel"><span class="rail-icon">⌘</span><span>Command Center</span></button><button class="rail-btn advanced-nav" data-target="agentPanel"><span class="rail-icon">✦</span><span>Agent Core</span></button><button class="rail-btn advanced-nav" data-target="builderPanel"><span class="rail-icon">⌘</span><span>Builder Mode</span></button><button class="rail-btn" data-target="settingsPanel"><span class="rail-icon">⚙</span><span>Settings</span></button>
       </nav>
       <div class="rail-persona">
         <span class="tiny-label">ACTIVE PERSONA</span>
         <button class="persona-mini" id="railPersona"><span class="mini-avatar">N</span><span><b id="railPersonaName">NOVA</b><small>Main Assistant</small></span><i>⌄</i></button>
       </div>
-      <div class="rail-footer"><span class="status-dot"></span><span>System Online</span><em>v9.0.0</em></div>
+      <div class="rail-footer"><span class="status-dot"></span><span>System Online</span><em>v21.3.0</em></div>
     </aside>
 
     <div class="app-content">
       <header class="topbar">
-        <button class="mobile-menu" id="mobileMenu">☰</button>
+        <button class="mobile-menu" id="mobileMenu" aria-label="Open NOVA navigation" aria-controls="commandRail" aria-expanded="false">☰</button>
         <div class="top-context"><span class="top-orb">N</span><b>NOVA Ultimate</b><span class="online-pill">● Online</span></div>
         <div class="top-actions">
           <button class="icon-btn" id="globalSearch" title="Search">⌕</button>
@@ -70,15 +72,15 @@
               </div>
               <div class="hero-copy">
                 <p class="eyebrow">NOVA INTELLIGENCE CORE</p>
-                <h1>Good day, User <span>👋</span></h1>
+                <h1 id="heroGreeting">Good day. I’m ready. <span>👋</span></h1>
                 <p>I'm NOVA, your next-generation AI assistant.<br/>What would you like to do today?</p>
-                <div class="hero-status"><span>● Memory Active</span><span>◉ Web Search Ready</span><span>◈ Tools Online</span></div>
+                <div class="hero-status"><span>● Memory Active</span><span>◉ Web Search Ready</span><span>◈ Tools Online</span><button type="button" id="requestAdvanced" class="link-btn">Request Advanced Access</button></div>
               </div>
               <div class="hero-actions">
                 <button class="quick-card" data-prompt="Help me create"><b>✎</b><span>Create</span><small>Build anything</small></button>
                 <button class="quick-card" data-research="true"><b>⌕</b><span>Research</span><small>Get real-time info</small></button>
                 <button class="quick-card" data-prompt="Analyze this"><b>▧</b><span>Analyze</span><small>Images, files, data</small></button>
-                <button class="quick-card" data-prompt="Write code for"><b>⌁</b><span>Code</span><small>Write & debug</small></button>
+                <button class="quick-card" data-autonomous="true"><b>⚡</b><span>Autonomous Build</span><small>Build, test & debug</small></button>
                 <button class="quick-card" id="moreTools"><b>•••</b><span>More</span><small>Explore tools</small></button>
               </div>
             </section>
@@ -87,16 +89,18 @@
               <div class="chat-header"><div><span class="live-dot"></span><b>Conversation</b><small id="conversationLabel">NOVA is ready</small></div><button id="clearConversation" class="ghost-btn">Clear</button></div>
               <div class="chat-feed" id="chatFeed"></div>
               <div id="typingIndicator" class="typing-indicator" hidden><span></span><span></span><span></span> NOVA is thinking</div>
+              <div id="executionProgress" class="execution-progress" hidden aria-live="polite"></div>
+              <div id="finalResult" class="final-result" hidden><b data-result-title>Ready — your result is verified</b><span data-result-detail></span><button type="button" class="secondary-btn" data-result-action>View result</button></div>
               <form id="assistantForm" class="composer-form">
-                <textarea id="messageInput" rows="2" placeholder="Ask NOVA anything..."></textarea>
+                <textarea id="messageInput" rows="2" aria-label="Message to NOVA" placeholder="Ask NOVA anything..."></textarea>
                 <div class="composer-tools" id="attachmentsWorkspace">
-                  <label for="fileInput" class="round-tool" title="Upload files">⌕</label>
+                  <label for="fileInput" class="round-tool" title="Upload files" aria-label="Attach files to NOVA">⌕</label>
                   <input id="fileInput" type="file" multiple accept="image/*,.pdf,.txt,.docx,.xlsx,.csv,.pptx" hidden />
-                  <button type="button" id="cameraButton" class="round-tool" title="Camera">◉</button>
-                  <button type="button" id="micButton" class="round-tool" title="Microphone">♩</button>
-                  <button type="button" id="liveVoiceButton" class="live-chip">◉ Live Voice</button>
+                  <button type="button" id="cameraButton" class="round-tool" title="Camera" aria-label="Open NOVA camera">◉</button>
+                  <button type="button" id="micButton" class="round-tool" title="Microphone" aria-label="Start or stop NOVA microphone">♩</button>
+                  <button type="button" id="liveVoiceButton" class="live-chip" aria-label="Toggle NOVA live voice">◉ Live Voice</button>
                   <span id="workspaceMode" class="mode-pill">TEXT MODE</span>
-                  <button type="submit" id="sendButton" class="send-btn" aria-label="Send">➤</button>
+                  <button type="submit" id="sendButton" class="send-btn" aria-label="Send message to NOVA" title="Send message">➤</button>
                 </div>
                 <div id="micStatus" class="micro-status">Microphone ready.</div>
                 <div id="liveVoiceStatus" class="live-voice-status">Live Voice is off.</div>
@@ -162,15 +166,37 @@
               </section>
 
               <section id="settingsPanel" class="panel settings-panel">
-                <div class="panel-title"><span>⚙</span><div><b>Settings</b><small>NOVA configuration</small></div><i id="accessibilityStatus">Adaptive</i></div>
-                <div class="settings-row"><span>System theme</span><b>Dark • Neon</b></div><div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>21.2.0</b></div>
-                <div class="universal-settings" aria-labelledby="accessibilityTitle">
-                  <div class="universal-heading"><div><span class="agent-kicker">UNIVERSAL NOVA</span><h3 id="accessibilityTitle" tabindex="-1">Accessibility & Personal Assistant</h3><p>Make NOVA adapt to the way you see, hear, speak, move and work.</p></div><span class="universal-badge">ADAPTIVE</span></div>
-                  <div class="access-grid">
-                    <label><input id="accessLargeText" type="checkbox"> Large text</label><label><input id="accessHighContrast" type="checkbox"> High contrast</label><label><input id="accessReduceMotion" type="checkbox"> Reduce motion</label><label><input id="accessCaptions" type="checkbox" checked> Live captions</label><label><input id="accessVoiceOnly" type="checkbox"> Voice-first</label><label><input id="accessFocusMode" type="checkbox"> Focus mode</label>
+                <div class="panel-title"><span>⚙</span><div><b>Settings</b><small>NOVA configuration & accessibility</small></div></div>
+                <div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>21.3.0</b></div>
+                <section class="access-level-card" aria-labelledby="accessLevelTitle">
+                  <div class="accessibility-heading"><div><b id="accessLevelTitle">🔐 Access level & capabilities</b><small>Features adapt to your verified account role</small></div><span id="accessLevelBadge">Checking…</span></div>
+                  <p id="accessLevelDescription" class="accessibility-note" aria-live="polite">Checking your NOVA access level…</p>
+                  <div id="accessCapabilityList" class="access-capability-list"><span>Loading permissions…</span></div>
+                  <p id="internalFeaturesNotice" class="accessibility-note">Internal developer tools and sensitive configuration remain hidden unless your verified account has Creator access.</p>
+                  <button type="button" id="refreshAccessCapabilities" class="secondary-btn">Refresh access status</button>
+                </section>
+                <section class="personalization-studio" aria-labelledby="personalizationTitle">
+                  <div class="accessibility-heading"><div><b id="personalizationTitle">✦ Appearance & Themes</b><small>Make NOVA feel like yours</small></div><span>Personalize</span></div>
+                  <div class="personalization-field"><label for="novaUiStyle">Interface style</label><select id="novaUiStyle"><option value="premium-glass">Premium Glass</option><option value="holographic" selected>Holographic</option><option value="minimal">Minimal</option><option value="professional">Professional</option><option value="immersive">Immersive</option><option value="classic">Classic Chat</option></select></div>
+                  <div class="personalization-field"><label for="novaTheme">Theme</label><select id="novaTheme"><option value="midnight" selected>Midnight</option><option value="aurora">Aurora</option><option value="nebula">Nebula</option><option value="emerald">Emerald</option><option value="sunset">Sunset</option><option value="ocean">Ocean</option><option value="forest">Forest</option><option value="light">Light</option><option value="system">Follow device</option></select></div>
+                  <div class="personalization-field"><label for="novaHologramStyle">Hologram representation</label><select id="novaHologramStyle"><option value="living-avatar" selected>Living Avatar</option><option value="energy-orb">Energy Orb</option><option value="geometric">Geometric AI</option><option value="abstract">Abstract Lightform</option><option value="minimal-glow">Minimal Glow</option><option value="off">Hide hologram</option></select></div>
+                  <div class="personalization-field"><label for="novaMotion">Animation intensity</label><select id="novaMotion"><option value="full">Full holographic motion</option><option value="subtle">Subtle motion</option><option value="reduced">Reduced motion</option></select></div>
+                  <div class="personalization-field"><label for="novaDensity">Layout spacing</label><select id="novaDensity"><option value="comfortable" selected>Comfortable</option><option value="compact">Compact</option><option value="spacious">Spacious</option></select></div>
+                  <div class="personalization-actions"><button type="button" id="savePersonalization" class="primary-btn">Save appearance</button><button type="button" id="resetPersonalization" class="secondary-btn">Reset</button></div>
+                  <p class="accessibility-note">Appearance settings are saved on this device. Persona identity colors remain recognizable; reduced-motion preferences are respected.</p>
+                </section>
+                <div class="accessibility-card" aria-labelledby="accessibilityTitle">
+                  <div class="accessibility-heading"><div><b id="accessibilityTitle" tabindex="-1">♿ Universal Accessibility</b><small>Make NOVA adapt to you</small></div><span id="accessibilityStatus">Adaptive</span></div>
+                  <div class="accessibility-grid">
+                    <label class="accessibility-toggle"><input id="accessLargeText" type="checkbox"><span><b>Large text</b><small>Increase readable text</small></span></label>
+                    <label class="accessibility-toggle"><input id="accessHighContrast" type="checkbox"><span><b>High contrast</b><small>Stronger visual separation</small></span></label>
+                    <label class="accessibility-toggle"><input id="accessReduceMotion" type="checkbox"><span><b>Reduce motion</b><small>Limit animation and effects</small></span></label>
+                    <label class="accessibility-toggle"><input id="accessCaptions" type="checkbox"><span><b>Live captions</b><small>Show NOVA speech as text</small></span></label>
+                    <label class="accessibility-toggle"><input id="accessVoiceOnly" type="checkbox"><span><b>Voice-first mode</b><small>Prioritize hands-free control</small></span></label>
+                    <label class="accessibility-toggle"><input id="accessFocusMode" type="checkbox"><span><b>Focus mode</b><small>Reduce interface clutter</small></span></label>
                   </div>
-                  <div class="universal-actions"><button id="accessibilityHelp" class="secondary-btn">Accessibility Guide</button><button id="accessibilityReset" class="ghost-btn">Reset</button><button id="installNova" class="primary-btn">Install NOVA</button></div>
-                  <div class="universal-status" id="universalStatus">NOVA is adapting to your device.</div>
+                  <div class="accessibility-actions"><button type="button" id="accessibilityReset" class="secondary-btn">Reset accessibility</button><button type="button" id="accessibilityHelp" class="ghost-btn">Accessibility guide</button></div>
+                  <p class="accessibility-note">NOVA is designed to work with screen readers, keyboard navigation, switch-style input, captions, voice control and adjustable visual presentation. Device-level permissions and Android accessibility actions may require the native NOVA app.</p>
                 </div>
               </section>
             </div>
@@ -178,26 +204,42 @@
 
           <aside class="right-column reference-sidebar">
             <section class="panel intelligence-panel">
-              <div class="side-heading"><b>NOVA Intelligence Core</b><span id="thinkingState">● Thinking</span></div>
+              <div class="side-heading"><b>NOVA Intelligence Core</b><span id="thinkingState">● Ready</span></div>
               <div class="brain-orb"><span>♧</span><i></i><b></b></div>
               <div class="core-signal" id="coreSignal">READY • AWAITING OBJECTIVE</div><ul id="coreStages"><li>✓ Understanding</li><li>✓ Planning</li><li>✓ Tool selection</li><li>✓ Executing</li><li>✓ Verifying</li></ul>
             </section>
             <section class="panel system-panel">
               <div class="side-heading"><b>System Status</b><span class="good">● Operational</span></div>
-              <div class="status-list"><span>◉ Groq (AI)<b id="groqStatus">Checking...</b></span><span>◉ ElevenLabs (Voice)<b id="voiceStatus">Checking...</b></span><span>◉ Memory (Chat)<b>Active</b></span><span>◉ Tools<b>Online</b></span></div>
+              <div class="status-list"><span>◉ Groq (AI)<b id="groqStatus">Checking...</b></span><span>◉ Gemini (AI)<b id="geminiStatus">Checking...</b></span><span>◉ Voice<b id="voiceStatus">Checking...</b></span><span>◉ Memory (Chat)<b>Active</b></span><span>◉ Tools<b>Online</b></span></div>
             </section>
             <section id="historyPanel" class="panel history-panel">
-              <div class="side-heading"><b>Recent Chats</b><button id="viewAllHistory" class="link-btn">View All</button></div>
+              <div class="side-heading"><b>Recent Chats</b><button id="viewAllHistory" class="link-btn">View All</button></div><input id="chatHistorySearch" class="history-search" placeholder="Search conversations…"/>
               <div id="historyList" class="history-list"></div>
             </section>
             <section class="panel quick-actions">
               <div class="side-heading"><b>Quick Actions</b></div>
               <div class="action-grid"><button id="takePhoto">◉<span>Take Photo</span></button><button id="uploadFile">▣<span>Upload File</span></button><button data-prompt="Create a plan for">☷<span>Plan</span></button><button data-prompt="Analyze this">◈<span>Analyze</span></button></div>
             </section>
-            <section id="voiceWorkspace" class="panel persona-panel">
-              <div class="side-heading"><b>Personas</b></div>
-              <div class="persona-grid"><button type="button" class="persona-btn active" data-persona="nova"><span class="persona-avatar">N</span><span><b>NOVA</b><small>Best for general use</small></span><i>✓</i></button><button type="button" class="persona-btn" data-persona="jarvis"><span class="persona-avatar">J</span><span><b>JARVIS</b><small>Advanced & technical</small></span><i></i></button><button type="button" class="persona-btn" data-persona="friday"><span class="persona-avatar">F</span><span><b>FRIDAY</b><small>Creative & helpful</small></span><i></i></button></div>
-              <div class="persona-tools"><span>Active: <b id="activePersonaTitle">NOVA</b></span><button id="speakButton" disabled>🔊 Speak</button></div>
+            <section id="voiceWorkspace" class="panel persona-panel persona-voice-panel" aria-label="NOVA Voice Studio" aria-hidden="true">
+              <div class="voice-studio-top"><button type="button" id="voiceBackButton" class="voice-back-button">← Back</button><div><span class="agent-kicker">NOVA IMMERSIVE AUDIO</span><h2>Voice Studio</h2><p>Talk naturally with your selected persona.</p></div><span id="personaStateLabel" class="voice-state-pill" aria-live="polite">● READY</span></div>
+              <div id="personaHologram" class="persona-hologram persona-nova" aria-live="polite">
+                <div class="holo-aura"></div><div class="holo-ring holo-ring-one"></div><div class="holo-ring holo-ring-two"></div>
+                <div class="holo-core"><span id="personaHoloInitial">N</span><i></i></div>
+                <b id="personaHoloName">NOVA</b><small id="personaHoloTagline">Your core intelligence</small>
+              </div>
+              <div class="voice-waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="voice-studio-status" id="voiceStudioStatus" aria-live="polite">Ready when you are</div>
+              <div class="persona-talk-controls voice-studio-controls">
+                <button type="button" id="personaTalkButton" class="persona-talk-primary">🎙 Start listening</button>
+                <button type="button" id="personaSpeakButton" class="persona-talk-secondary" disabled>▶ Repeat response</button>
+                <button type="button" id="voiceStopButton" class="persona-talk-secondary">■ Stop audio</button>
+                <button type="button" id="voiceCameraButton" class="persona-talk-secondary">◉ Open camera</button>
+              </div>
+              <div class="voice-transcript" aria-live="polite"><div><b>Conversation transcript</b><span>Latest exchange</span></div><p id="voiceTranscript">Your spoken messages and NOVA replies will appear here.</p></div>
+              <details class="voice-settings"><summary>Voice and caption settings</summary><div class="voice-settings-grid"><label for="voiceChoice">Device voice<select id="voiceChoice"><option value="">Automatic persona voice</option></select></label><label for="voiceRate">Speech rate <output id="voiceRateOutput">1.0×</output><input id="voiceRate" type="range" min="0.7" max="1.3" step="0.05" value="1"></label><label class="voice-caption-toggle"><input id="voiceCaptionsToggle" type="checkbox" checked> Show live captions</label></div></details>
+              <p id="personaTalkStatus" class="persona-talk-status" aria-live="polite">Choose a persona, then tap Start listening to speak with NOVA.</p>
+              <div class="persona-grid"><button type="button" class="persona-btn active" data-persona="nova"><span class="persona-avatar">N</span><span><b>NOVA</b><small>Futuristic & balanced</small></span><i>✓</i></button><button type="button" class="persona-btn" data-persona="jarvis"><span class="persona-avatar">J</span><span><b>JARVIS</b><small>Precise & technical</small></span><i></i></button><button type="button" class="persona-btn" data-persona="friday"><span class="persona-avatar">F</span><span><b>FRIDAY</b><small>Warm & conversational</small></span><i></i></button><button type="button" class="persona-btn" data-persona="atlas"><span class="persona-avatar">A</span><span><b>ATLAS</b><small>Deep & commanding</small></span><i></i></button><button type="button" class="persona-btn" data-persona="lyra"><span class="persona-avatar">L</span><span><b>LYRA</b><small>Friendly & expressive</small></span><i></i></button><button type="button" class="persona-btn" data-persona="orion"><span class="persona-avatar">O</span><span><b>ORION</b><small>Cinematic & composed</small></span><i></i></button></div>
+              <div class="persona-tools"><span>Active: <b id="activePersonaTitle">NOVA</b></span><span id="personaVoiceMode">Native voice ready</span></div>
             </section>
           </aside>
         </div>
@@ -218,7 +260,7 @@
             <div class="capability-title"><span>♩</span><b>Live Voice</b><small>Microphone</small></div>
             <div class="waveform"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
             <div class="voice-state">Ready to listen</div>
-            <button data-action="voice">Start Live Voice</button>
+            <button data-action="voice">Open Voice Studio</button>
           </article>
           <article class="capability-card memory-capability">
             <div class="capability-title"><span>♧</span><b>Memory & Context</b><small>Personalized</small></div>
@@ -232,7 +274,7 @@
           </article>
           <article class="capability-card personas-capability">
             <div class="capability-title"><span>✦</span><b>Personas</b><small>Choose NOVA's mode</small></div>
-            <div class="persona-pills"><button data-persona="nova"><span>N</span>NOVA</button><button data-persona="jarvis"><span>J</span>JARVIS</button><button data-persona="friday"><span>F</span>FRIDAY</button></div>
+            <div class="persona-pills"><button data-persona="nova"><span>N</span>NOVA</button><button data-persona="jarvis"><span>J</span>JARVIS</button><button data-persona="friday"><span>F</span>FRIDAY</button><button data-persona="atlas"><span>A</span>ATLAS</button><button data-persona="lyra"><span>L</span>LYRA</button><button data-persona="orion"><span>O</span>ORION</button></div>
             <button data-target="voiceWorkspace">Switch Persona</button>
           </article>
         </section>
@@ -241,7 +283,7 @@
           <div class="mobile-speaker"></div><div class="mobile-screen">
             <div class="mobile-top"><span>☰</span><b>NOVA</b><span>●</span></div>
             <div class="mobile-orb"><span>N</span></div>
-            <strong>Good day, User 👋</strong><small>I'm NOVA, your next-generation AI assistant.</small><em>● Online</em>
+            <strong>Good day. I’m ready.</strong><small>I'm NOVA, your next-generation AI assistant.</small><em>● Online</em>
             <div class="mobile-actions"><span>✎</span><span>⌕</span><span>▧</span><span>⌁</span></div>
             <div class="mobile-bubble user">Help me build a website.</div><div class="mobile-bubble nova">Absolutely! Let's build it together.</div>
             <div class="mobile-composer">Type a message… <b>➤</b></div><div class="mobile-nav"><span>Chat</span><span>Memory</span><span>Tools</span><span>More</span></div>
@@ -252,9 +294,10 @@
   </div>
 
   <div class="camera-modal" id="cameraModal" hidden>
-    <div class="camera-card"><div class="camera-header"><h3>NOVA Vision</h3><button id="closeCamera">✕</button></div><video id="cameraPreview" autoplay playsinline></video><canvas id="cameraCanvas" hidden></canvas><div class="camera-actions"><button id="captureButton" class="primary-btn">Capture</button><button id="switchCameraButton" class="secondary-btn">Switch camera</button></div><p id="cameraMessage" class="camera-message">Camera ready.</p></div>
+    <div class="camera-card" role="dialog" aria-modal="true" aria-labelledby="cameraTitle"><div class="camera-header"><h3 id="cameraTitle">NOVA Vision</h3><button id="closeCamera" aria-label="Close camera">✕</button></div><video id="cameraPreview" autoplay playsinline muted></video><canvas id="cameraCanvas" hidden></canvas><div class="camera-actions"><button id="captureButton" class="primary-btn">Capture</button><button id="switchCameraButton" class="secondary-btn">Switch camera</button></div><p id="cameraMessage" class="camera-message">Camera ready.</p></div>
   </div>
+  <div id="novaCaptions" class="nova-captions" hidden aria-live="polite" aria-atomic="true"><span class="caption-label">NOVA</span><span id="captionText"></span></div>
   <div class="toast" id="toast" hidden></div>
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=21.3.0-role-access" defer></script>
 </body>
 </html>

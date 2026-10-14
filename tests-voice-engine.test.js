@@ -26,6 +26,8 @@ try {
   const status = engine.status();
   assert.equal(status.engine, 'NOVA Voice Engine');
   assert.equal(status.ready, true);
+  assert.equal(status.primaryProvider, 'browser-native');
+  assert.equal(status.nativeCore.requiresApiKey, false);
   assert.equal(status.voices.length, 6);
   assert.equal(status.voices.filter((v) => v.configured).length, 6);
 

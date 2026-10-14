@@ -2,8 +2,9 @@
  * NOVA Ultimate — Voice Engine (Step 2)
  *
  * Owns NOVA's voice profiles and speech-provider abstraction.
- * Provider credentials stay server-side. Voice selection is a NOVA concern;
- * ElevenLabs (or another provider later) is only a speech-generation backend.
+ * NOVA owns voice selection, persona prosody and playback policy. The primary
+ * playback engine is the browser/device Speech Synthesis API; cloud TTS is an
+ * optional adapter and is never required for core voice functionality.
  */
 
 const VOICES = [
@@ -35,7 +36,7 @@ export class VoiceEngine {
       name: voice.name,
       description: voice.description,
       configured: Boolean(process.env[voice.env]),
-      provider: 'elevenlabs',
+      provider: 'browser-native',
       defaultSpeed: voice.defaultSpeed
     }));
   }
@@ -60,7 +61,10 @@ export class VoiceEngine {
         configured: Boolean(process.env[provider.key])
       })),
       voices: this.voices(),
-      ready: this.configuredProviders().length > 0
+      primaryProvider: 'browser-native',
+      nativeCore: { availableInSupportedBrowsers: true, requiresApiKey: false },
+      optionalCloudProvidersConfigured: this.configuredProviders().length > 0,
+      ready: true
     };
   }
 

@@ -20,6 +20,7 @@ import { AIRouter } from './core/ai-router.js';
 import { VoiceEngine } from './core/voice-engine.js';
 import { NovaUniversal } from './core/nova-universal.js';
 import { ActionGateway } from './core/action-gateway.js';
+import { accessPolicyFor } from './core/access-control.js';
 import AdmZip from 'adm-zip';
 import mammoth from 'mammoth';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
@@ -255,12 +256,25 @@ async function roleFor(req){
   if(verifiedUser?.id && creatorUserId && verifiedUser.id===creatorUserId)return 'creator';
   const verifiedEmail=String(verifiedUser?.email||'').trim().toLowerCase();
   if(creatorEmail && verifiedEmail && verifiedEmail===creatorEmail)return 'creator';
+  const creatorIds = String(process.env.NOVA_CREATOR_USER_IDS || '').split(',').map(x=>x.trim()).filter(Boolean);
+  if(verifiedUser?.id && creatorIds.includes(verifiedUser.id)) return 'creator';
+  const authorisedEmails = String(process.env.NOVA_AUTHORISED_EMAILS || '').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  const authorisedIds = String(process.env.NOVA_AUTHORISED_USER_IDS || '').split(',').map(x=>x.trim()).filter(Boolean);
+  if((verifiedEmail && authorisedEmails.includes(verifiedEmail)) || (verifiedUser?.id && authorisedIds.includes(verifiedUser.id))) return 'viewer';
   return 'user';
 }
 async function requireAdvanced(req,res,next){ const role=await roleFor(req); if(role==='creator'||role==='viewer'){req.novaRole=role;return next();} return res.status(403).json({error:'This NOVA capability is restricted to authorized users.'}); }
 async function requireCreator(req,res,next){ if(await roleFor(req)!=='creator')return res.status(403).json({error:'Creator authorization is required for this action.'}); req.novaRole='creator'; next(); }
 
 app.get('/api/capabilities', (req,res)=>res.json(universal.capabilities({mobile:String(req.query.mobile||'').toLowerCase()==='true'})));
+// The server is the source of truth for access roles and visible capability groups.
+app.get('/api/access/capabilities', optionalUser, async (req,res)=>{
+  const hasRoleToken = Boolean(process.env.NOVA_CREATOR_TOKEN && String(req.headers['x-nova-creator-token']||'')===String(process.env.NOVA_CREATOR_TOKEN)) || Boolean(process.env.NOVA_VIEWER_TOKEN && String(req.headers['x-nova-viewer-token']||'')===String(process.env.NOVA_VIEWER_TOKEN));
+  const role = (req.user || hasRoleToken) ? await roleFor(req) : ((process.env.NOVA_GUEST_LIMITS === 'false') ? 'user' : 'guest');
+  const policy = accessPolicyFor(role);
+  res.set('Cache-Control','no-store');
+  res.json({ role: policy.role, label: policy.label, level: policy.level, permissions: policy.permissions, visibleAreas: policy.visibleAreas, description: policy.description, internalFeaturesHidden: role !== 'creator', readOnlyRestrictedAccess: role === 'viewer' });
+});
 app.get('/api/profile', optionalUser, async (req,res)=>{try{const userId=ownedUserId(req,req.query.user_id);res.json(await universal.getProfile(userId));}catch(e){res.status(401).json({error:e.message})}});
 app.put('/api/profile', optionalUser, async (req,res)=>{try{const userId=ownedUserId(req,req.body?.user_id);const profile=await universal.updateProfile(userId,req.body?.profile||{});res.json(profile);}catch(e){res.status(401).json({error:e.message})}});
 app.post('/api/safety/check', (req,res)=>res.json(universal.checkAction(String(req.body?.action||'unknown'),req.body||{})));
@@ -274,11 +288,12 @@ app.get('/api/devices', async (req,res)=>{try{res.json({devices:await store.list
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
-    version: '21.2.2',
+    version: '21.3.0',
     status: 'operational',
-    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','read-only-restricted-access','access-audit','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
+    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','role-based-access','role-specific-settings','read-only-restricted-access','access-audit','native-voice-core','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
-    voiceConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
+    voiceConfigured: voiceEngine.status().ready,
+    cloudVoiceConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
     voiceEngine: voiceEngine.status(),
     personas: voiceEngine.voices().map((voice) => voice.id),
     aiRouter: { paidMode: Boolean(process.env.NOVA_PAID_MODE === 'true'), providers: aiRouter.status() },
@@ -351,11 +366,14 @@ app.post('/assist', async (req, res) => {
 
   try {
     const personaPrompts = {
-      nova: 'You are NOVA, an adaptive personal AI assistant. Be clear, helpful, calm, and concise.',
-      jarvis: 'You are JARVIS, an original strategic AI persona. Be precise, composed, technical when useful, and proactive. Do not claim to be a fictional character.',
-      friday: 'You are FRIDAY, an original conversational AI persona. Be warm, quick, confident, and practical. Do not claim to be a fictional character.'
+      nova: 'You are NOVA, the core adaptive personal AI assistant. Be clear, helpful, balanced, calm, and concise.',
+      jarvis: 'You are JARVIS, an original strategic AI persona. Be precise, composed, analytical, technical when useful, and proactive. Do not claim to be a fictional character.',
+      friday: 'You are FRIDAY, an original conversational AI persona. Be warm, quick, empathetic, confident, and practical. Do not claim to be a fictional character.',
+      atlas: 'You are ATLAS, an original task-focused AI persona. Be decisive, structured, execution-minded, and thorough; break complex goals into safe, verifiable steps. Do not claim to have powers or tools you do not have.',
+      lyra: 'You are LYRA, an original creative and exploratory AI persona. Be imaginative, curious, expressive, and constructive while clearly separating facts from ideas.',
+      orion: 'You are ORION, an original thoughtful sentinel AI persona. Be composed, observant, security-conscious, careful with uncertainty, and protective of user privacy. Do not claim to be a fictional character.'
     };
-    const selectedPersona = ['nova', 'jarvis', 'friday'].includes(String(persona).toLowerCase()) ? String(persona).toLowerCase() : 'nova';
+    const selectedPersona = ['nova', 'jarvis', 'friday', 'atlas', 'lyra', 'orion'].includes(String(persona).toLowerCase()) ? String(persona).toLowerCase() : 'nova';
 
     const imageAttachments = attachments
       .filter((item) => item && typeof item.data === 'string' && String(item.type || '').startsWith('image/'))
@@ -645,7 +663,7 @@ app.get('/api/self-test', (_req, res) => {
     {name:'replanning',ok:Boolean(agentCore.replan(plan, plan.find(x=>x.id==='research'), new Error('Search provider unavailable'), {replans:0,usedStrategies:[]}))},
     {name:'static-frontend',ok:true}
   ];
-  res.json({ok:checks.every(c=>c.ok),version:'21.2.1',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
+  res.json({ok:checks.every(c=>c.ok),version:'21.3.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
 });
 
 app.get('/api/voices', (req, res) => {
