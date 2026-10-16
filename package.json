@@ -1,6 +1,6 @@
 {
   "name": "nova-ultimate",
-  "version": "21.4.0",
+  "version": "21.4.1",
   "description": "Role-aware NOVA assistant with native voice, sandboxed builder, Creative Studio previews and configurable image generation.",
   "type": "module",
   "scripts": {

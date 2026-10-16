@@ -1,9 +1,69 @@
 [
   {
-    "id": "209d8341-b279-46e2-93fc-f4ea4b10ea58",
-    "goal": "research and build",
-    "status": "queued",
-    "createdAt": "2026-10-15T18:33:46.167Z",
+    "id": "a77df06b-0818-45fa-bba1-907560d77967",
+    "goal": "perform destructive action",
+    "status": "awaiting_approval",
+    "createdAt": "2026-10-16T01:57:09.751Z",
+    "plan": [
+      {
+        "id": "interpret",
+        "label": "Interpret",
+        "tool": "reasoning",
+        "dependsOn": []
+      },
+      {
+        "id": "write",
+        "label": "Write",
+        "tool": "assist",
+        "permissions": [
+          "destructive"
+        ],
+        "dependsOn": [
+          "interpret"
+        ]
+      },
+      {
+        "id": "verify",
+        "label": "Verify",
+        "tool": "verification",
+        "dependsOn": [
+          "write"
+        ]
+      }
+    ],
+    "trace": [
+      {
+        "at": 1792115829751,
+        "id": "write",
+        "label": "Write",
+        "tool": "assist",
+        "status": "approval_required",
+        "detail": "Human approval required before consequential action."
+      }
+    ],
+    "results": [],
+    "attempts": 0,
+    "retries": 0,
+    "replans": 0,
+    "cancelRequested": false,
+    "approval": {
+      "step": "write",
+      "requestedAt": "2026-10-16T01:57:09.751Z",
+      "approved": false
+    },
+    "lastEvent": {
+      "id": "write",
+      "label": "Write",
+      "tool": "assist",
+      "status": "approval_required",
+      "detail": "Human approval required before consequential action."
+    }
+  },
+  {
+    "id": "2b50f3e3-4e49-4a45-85fd-f2cf4990dd38",
+    "goal": "cancel me",
+    "status": "cancelled",
+    "createdAt": "2026-10-16T01:57:09.751Z",
     "plan": [
       {
         "id": "interpret",
@@ -37,134 +97,18 @@
         ]
       }
     ],
-    "trace": [
-      {
-        "at": 1792089226169,
-        "id": "research",
-        "label": "Gather live web intelligence",
-        "tool": "research",
-        "status": "running",
-        "attempt": 1
-      },
-      {
-        "at": 1792089226169,
-        "id": "research",
-        "label": "Gather live web intelligence",
-        "tool": "research",
-        "status": "failure",
-        "attempt": 1,
-        "detail": "transient: temporary timeout",
-        "category": "transient"
-      },
-      {
-        "at": 1792089226169,
-        "id": "research",
-        "label": "Gather live web intelligence",
-        "tool": "research",
-        "status": "retry",
-        "attempt": 1,
-        "detail": "Retry scheduled after 0ms.",
-        "category": "transient",
-        "delayMs": 0
-      },
-      {
-        "at": 1792089226170,
-        "id": "research",
-        "label": "Gather live web intelligence",
-        "tool": "research",
-        "status": "running",
-        "attempt": 2
-      },
-      {
-        "at": 1792089226170,
-        "id": "research",
-        "label": "Gather live web intelligence",
-        "tool": "research",
-        "status": "done",
-        "attempt": 2,
-        "detail": "Step completed.",
-        "recovered": false
-      },
-      {
-        "at": 1792089226170,
-        "id": "build",
-        "label": "Design and build solution",
-        "tool": "assist",
-        "status": "running",
-        "attempt": 1
-      },
-      {
-        "at": 1792089226170,
-        "id": "build",
-        "label": "Design and build solution",
-        "tool": "assist",
-        "status": "done",
-        "attempt": 1,
-        "detail": "Step completed.",
-        "recovered": false
-      },
-      {
-        "at": 1792089226170,
-        "id": "verify",
-        "label": "Verify outputs and assemble result",
-        "tool": "verification",
-        "status": "done",
-        "detail": "Verification passed: 2/2.",
-        "verification": {
-          "passed": true,
-          "required": 2,
-          "completed": 2,
-          "missing": []
-        }
-      }
-    ],
-    "results": [
-      {
-        "step": "research",
-        "ok": true,
-        "skipped": false,
-        "degraded": false,
-        "attempt": 2,
-        "output": "done:research"
-      },
-      {
-        "step": "build",
-        "ok": true,
-        "skipped": false,
-        "degraded": false,
-        "attempt": 1,
-        "output": "done:build"
-      }
-    ],
-    "attempts": 3,
-    "retries": 1,
+    "trace": [],
+    "results": [],
+    "attempts": 0,
+    "retries": 0,
     "replans": 0,
-    "cancelRequested": false,
-    "lastEvent": {
-      "id": "verify",
-      "label": "Verify outputs and assemble result",
-      "tool": "verification",
-      "status": "done",
-      "detail": "Verification passed: 2/2.",
-      "verification": {
-        "passed": true,
-        "required": 2,
-        "completed": 2,
-        "missing": []
-      }
-    },
-    "verification": {
-      "passed": true,
-      "required": 2,
-      "completed": 2,
-      "missing": []
-    }
+    "cancelRequested": true
   },
   {
-    "id": "8bd542d9-c49a-40b2-9bff-2abc92f3d213",
+    "id": "09111734-0cc2-4906-9c03-2a39a8639afb",
     "goal": "perform destructive action",
     "status": "awaiting_approval",
-    "createdAt": "2026-10-15T18:33:46.171Z",
+    "createdAt": "2026-10-16T01:57:01.645Z",
     "plan": [
       {
         "id": "interpret",
@@ -194,7 +138,7 @@
     ],
     "trace": [
       {
-        "at": 1792089226171,
+        "at": 1792115821645,
         "id": "write",
         "label": "Write",
         "tool": "assist",
@@ -209,7 +153,7 @@
     "cancelRequested": false,
     "approval": {
       "step": "write",
-      "requestedAt": "2026-10-15T18:33:46.171Z",
+      "requestedAt": "2026-10-16T01:57:01.645Z",
       "approved": false
     },
     "lastEvent": {
@@ -221,10 +165,55 @@
     }
   },
   {
-    "id": "9481fd42-dd0a-4134-a04c-3c66ff01c92f",
+    "id": "a894ef57-4133-424c-a468-5f68b69ccf10",
     "goal": "cancel me",
     "status": "cancelled",
-    "createdAt": "2026-10-15T18:33:46.171Z",
+    "createdAt": "2026-10-16T01:57:01.646Z",
+    "plan": [
+      {
+        "id": "interpret",
+        "label": "Interpret objective",
+        "tool": "reasoning",
+        "dependsOn": []
+      },
+      {
+        "id": "research",
+        "label": "Gather live web intelligence",
+        "tool": "research",
+        "dependsOn": [
+          "interpret"
+        ]
+      },
+      {
+        "id": "build",
+        "label": "Design and build solution",
+        "tool": "assist",
+        "dependsOn": [
+          "interpret"
+        ]
+      },
+      {
+        "id": "verify",
+        "label": "Verify outputs and assemble result",
+        "tool": "verification",
+        "dependsOn": [
+          "research",
+          "build"
+        ]
+      }
+    ],
+    "trace": [],
+    "results": [],
+    "attempts": 0,
+    "retries": 0,
+    "replans": 0,
+    "cancelRequested": true
+  },
+  {
+    "id": "fbec86a9-84f8-40a0-8c4d-2edd510c7e19",
+    "goal": "cancel test",
+    "status": "cancelled",
+    "createdAt": "2026-10-16T01:57:09.688Z",
     "plan": [
       {
         "id": "interpret",
