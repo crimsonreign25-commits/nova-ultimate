@@ -11,7 +11,7 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/icons/nova-192.png" />
   <title>NOVA Ultimate</title>
-  <link rel="stylesheet" href="/styles.css?v=21.3.0-role-access" />
+  <link rel="stylesheet" href="/styles.css?v=21.4.0-creative-studio" />
 </head>
 <body>
   <a class="skip-link" href="#assistantWorkspace">Skip to NOVA conversation</a>
@@ -41,13 +41,13 @@
         <button class="rail-btn" data-target="attachmentsWorkspace"><span class="rail-icon">▣</span><span>Files</span></button>
         <button class="rail-btn" data-target="voiceWorkspace"><span class="rail-icon">◉</span><span>Voice</span></button>
         <button class="rail-btn" data-target="securityWorkspace"><span class="rail-icon">◇</span><span>Security</span></button>
-        <button class="rail-btn" data-target="commandPanel"><span class="rail-icon">⌘</span><span>Command Center</span></button><button class="rail-btn advanced-nav" data-target="agentPanel"><span class="rail-icon">✦</span><span>Agent Core</span></button><button class="rail-btn advanced-nav" data-target="builderPanel"><span class="rail-icon">⌘</span><span>Builder Mode</span></button><button class="rail-btn" data-target="settingsPanel"><span class="rail-icon">⚙</span><span>Settings</span></button>
+        <button class="rail-btn" data-target="creativeStudioPanel"><span class="rail-icon">✧</span><span>Creative Studio</span></button><button class="rail-btn" data-target="commandPanel"><span class="rail-icon">⌘</span><span>Command Center</span></button><button class="rail-btn advanced-nav" data-target="agentPanel"><span class="rail-icon">✦</span><span>Agent Core</span></button><button class="rail-btn advanced-nav" data-target="builderPanel"><span class="rail-icon">⌘</span><span>Builder Mode</span></button><button class="rail-btn" data-target="settingsPanel"><span class="rail-icon">⚙</span><span>Settings</span></button>
       </nav>
       <div class="rail-persona">
         <span class="tiny-label">ACTIVE PERSONA</span>
         <button class="persona-mini" id="railPersona"><span class="mini-avatar">N</span><span><b id="railPersonaName">NOVA</b><small>Main Assistant</small></span><i>⌄</i></button>
       </div>
-      <div class="rail-footer"><span class="status-dot"></span><span>System Online</span><em>v21.3.0</em></div>
+      <div class="rail-footer"><span class="status-dot"></span><span>System Online</span><em>v21.4.0</em></div>
     </aside>
 
     <div class="app-content">
@@ -156,6 +156,21 @@
                 <pre id="builderPlan" class="builder-plan">Builder plan will appear here.</pre>
               </section>
 
+              <section id="creativeStudioPanel" class="panel creative-studio-panel">
+                <div class="agent-topline"><div><span class="agent-kicker">NOVA CREATIVE STUDIO</span><h2>Describe it → Preview it → Improve it</h2><p>Create a website or app starter in NOVA’s own studio, inspect a live preview, and use practical improvement suggestions before exporting.</p></div><div class="builder-badge">PREVIEW</div></div>
+                <form id="creativeStudioForm" class="creative-form">
+                  <label>Project name<input id="studioName" maxlength="70" value="My NOVA Project" required /></label>
+                  <label>Project type<select id="studioKind"><option value="website">Website</option><option value="app">Web app prototype</option></select></label>
+                  <label>Describe your idea<textarea id="studioDescription" maxlength="240" rows="3" placeholder="A modern website for my business with services and contact information…" required></textarea></label>
+                  <label>Visual style<select id="studioStyle"><option value="midnight">Midnight violet</option><option value="ocean">Ocean teal</option><option value="sunset">Sunset coral</option></select></label>
+                  <button class="primary-btn" type="submit">Create live preview ↗</button>
+                </form>
+                <div class="studio-preview-heading"><b>Live preview</b><span id="studioPreviewStatus">Waiting for your idea</span><button id="studioDownload" class="secondary-btn" type="button" disabled>Export HTML</button></div>
+                <iframe id="studioPreview" title="NOVA project live preview" sandbox="allow-scripts" referrerpolicy="no-referrer" srcdoc="<!doctype html><html><body style='font:16px system-ui;padding:24px;color:#64748b'>Your project preview will appear here.</body></html>"></iframe>
+                <div class="studio-suggestions"><b>Suggestions to enhance it</b><ul id="studioSuggestions"><li>Generate a preview to receive improvement suggestions.</li></ul></div>
+                <div class="studio-image-panel"><div><b>High-definition image studio</b><p>Generate image assets through a configured compatible image provider. Provider credentials stay on the server.</p></div><textarea id="studioImagePrompt" rows="2" maxlength="2000" placeholder="Describe the image you want NOVA to create…"></textarea><div class="studio-image-controls"><select id="studioImageResolution" aria-label="Image resolution"><option value="1536x1024">Landscape HD</option><option value="1024x1024">Square</option><option value="1024x1536">Portrait</option></select><button id="studioGenerateImage" class="primary-btn" type="button">Generate image</button></div><p id="studioImageStatus" role="status" aria-live="polite">Image generation requires a configured image provider.</p><img id="studioGeneratedImage" alt="Image generated by NOVA" hidden /></div>
+              </section>
+
               <section id="commandPanel" class="panel command-panel">
                 <div class="panel-title"><span>⌘</span><div><b>Command Center</b><small>Plan, execute and monitor NOVA workflows</small></div><i id="commandState">Ready</i></div>
                 <div class="command-presets">
@@ -167,7 +182,7 @@
 
               <section id="settingsPanel" class="panel settings-panel">
                 <div class="panel-title"><span>⚙</span><div><b>Settings</b><small>NOVA configuration & accessibility</small></div></div>
-                <div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>21.3.0</b></div>
+                <div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>21.4.0</b></div>
                 <section class="access-level-card" aria-labelledby="accessLevelTitle">
                   <div class="accessibility-heading"><div><b id="accessLevelTitle">🔐 Access level & capabilities</b><small>Features adapt to your verified account role</small></div><span id="accessLevelBadge">Checking…</span></div>
                   <p id="accessLevelDescription" class="accessibility-note" aria-live="polite">Checking your NOVA access level…</p>
@@ -298,6 +313,6 @@
   </div>
   <div id="novaCaptions" class="nova-captions" hidden aria-live="polite" aria-atomic="true"><span class="caption-label">NOVA</span><span id="captionText"></span></div>
   <div class="toast" id="toast" hidden></div>
-  <script src="/app.js?v=21.3.0-role-access" defer></script>
+  <script src="/app.js?v=21.4.0-creative-studio" defer></script>
 </body>
 </html>

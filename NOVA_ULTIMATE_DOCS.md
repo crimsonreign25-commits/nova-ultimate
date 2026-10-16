@@ -156,3 +156,10 @@ New core module: `core/recovery-engine.js`
 
 New endpoint: `POST /api/jobs/:id/cancel`
 New status data: retries, replans, verification, recovery trace events.
+
+## NOVA Creative Studio (21.4.0)
+- `core/creative-studio.js` is NOVA-owned scaffolding logic for responsive website and web-app starter previews, with escaped user text and improvement suggestions.
+- `/api/studio/preview` returns a preview and `index.html` starter without granting access to internal workspace administration.
+- `/api/studio/image` is an image-provider adapter. Configure `NOVA_IMAGE_API_URL` and `NOVA_IMAGE_API_KEY` on the server only. The adapter accepts an OpenAI-style `data[0].url` or `data[0].b64_json` response (also `images[0].url` / `data_url`). Supported requested sizes: 1024x1024, 1536x1024, and 1024x1536. Provider quality and actual pixel resolution depend on the configured provider/model.
+- The browser preview is a sandboxed prototype, not a deployed production app. Generated forms and actions are demonstration-only until connected to a real backend. Review suggestions, test security/accessibility, and connect integrations before publishing.
+- Internal Builder Mode, access audits, provider secrets and administrative endpoints remain role-restricted. Creative Studio preview generation is a separate user-facing capability.

@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -21,6 +22,7 @@ import { VoiceEngine } from './core/voice-engine.js';
 import { NovaUniversal } from './core/nova-universal.js';
 import { ActionGateway } from './core/action-gateway.js';
 import { accessPolicyFor } from './core/access-control.js';
+import { createPreview, generateImage } from './core/creative-studio.js';
 import AdmZip from 'adm-zip';
 import mammoth from 'mammoth';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
@@ -266,6 +268,26 @@ async function roleFor(req){
 async function requireAdvanced(req,res,next){ const role=await roleFor(req); if(role==='creator'||role==='viewer'){req.novaRole=role;return next();} return res.status(403).json({error:'This NOVA capability is restricted to authorized users.'}); }
 async function requireCreator(req,res,next){ if(await roleFor(req)!=='creator')return res.status(403).json({error:'Creator authorization is required for this action.'}); req.novaRole='creator'; next(); }
 
+// Public-facing creative tools. Image requests are throttled to protect configured provider quotas.
+const imageGenerationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 8, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Image generation limit reached. Please try again later.' } });
+app.post('/api/studio/preview', (req,res) => {
+  try {
+    const {name,kind,description,style}=req.body||{};
+    if(!['website','app'].includes(kind||'website')) return res.status(400).json({error:'kind must be website or app'});
+    res.json({ok:true,...createPreview({name,kind,description,style})});
+  } catch(error) { res.status(400).json({error:'Could not create preview.'}); }
+});
+app.post('/api/studio/image', imageGenerationLimiter, async (req,res) => {
+  try {
+    const prompt=String(req.body?.prompt||'').trim();
+    if(prompt.length<3) return res.status(400).json({error:'Describe the image you want (at least 3 characters).'});
+    if(prompt.length>2000) return res.status(413).json({error:'Image prompts are limited to 2000 characters.'});
+    const allowed=['1024x1024','1536x1024','1024x1536'];
+    const resolution=allowed.includes(req.body?.resolution)?req.body.resolution:'1536x1024';
+    res.json(await generateImage({prompt,resolution,style:String(req.body?.style||'high-definition').slice(0,40)}));
+  } catch(error) { res.status(error.status||500).json({error:error.message||'Image generation failed.'}); }
+});
+
 app.get('/api/capabilities', (req,res)=>res.json(universal.capabilities({mobile:String(req.query.mobile||'').toLowerCase()==='true'})));
 // The server is the source of truth for access roles and visible capability groups.
 app.get('/api/access/capabilities', optionalUser, async (req,res)=>{
@@ -288,9 +310,9 @@ app.get('/api/devices', async (req,res)=>{try{res.json({devices:await store.list
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
-    version: '21.3.0',
+    version: '21.4.0',
     status: 'operational',
-    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','role-based-access','role-specific-settings','read-only-restricted-access','access-audit','native-voice-core','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
+    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','role-based-access','role-specific-settings','read-only-restricted-access','access-audit','native-voice-core','creative-studio-preview','website-app-starter-generator','image-generation-provider-adapter','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
     voiceConfigured: voiceEngine.status().ready,
     cloudVoiceConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
@@ -663,7 +685,7 @@ app.get('/api/self-test', (_req, res) => {
     {name:'replanning',ok:Boolean(agentCore.replan(plan, plan.find(x=>x.id==='research'), new Error('Search provider unavailable'), {replans:0,usedStrategies:[]}))},
     {name:'static-frontend',ok:true}
   ];
-  res.json({ok:checks.every(c=>c.ok),version:'21.3.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
+  res.json({ok:checks.every(c=>c.ok),version:'21.4.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
 });
 
 app.get('/api/voices', (req, res) => {
