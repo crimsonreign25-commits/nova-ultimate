@@ -8,3 +8,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: NOVA_APP_URL
+        value: https://nova-ultimate-8scp.onrender.com
+      - key: NOVA_EXTERNAL_AI_ENABLED
+        value: "true"
+      - key: NOVA_DATA_ENCRYPTION_KEY
+        sync: false

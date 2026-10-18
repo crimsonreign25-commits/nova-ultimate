@@ -106,6 +106,7 @@ export class AIRouter {
     return {
       task: selectedTask,
       selectionPolicy: this.paidMode ? 'free-and-paid-enabled' : 'free-first-only',
+      privacy: { externalProvidersEnabled: String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false', sendsPromptToProvider: true },
       available: ranked.map((p) => ({ id: p.id, model: p.model(), score: scoreProvider(p, selectedTask) })),
       providers: ranked.map((p) => p.id),
       supportedTasks: taskList()
@@ -113,6 +114,9 @@ export class AIRouter {
   }
 
   async chat({ messages, needsVision = false, temperature = 0.7, maxTokens = 4096, task = '' }) {
+    if (String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() === 'false') {
+      throw Object.assign(new Error('External AI routing is disabled by NOVA privacy settings.'), { code: 'EXTERNAL_AI_DISABLED' });
+    }
     const selectedTask = classifyTask({ messages, needsVision, task });
     await this.applyDynamicModelSelection({ task: selectedTask, needsVision });
     const ranked = this.rankProviders({ needsVision, task: selectedTask });
@@ -240,7 +244,7 @@ export class AIRouter {
       strengths: p.strengths || [],
       configured: Boolean(process.env[p.key]),
       free: p.free,
-      enabled: Boolean(process.env[p.key]) && (p.free || this.paidMode),
+      enabled: Boolean(process.env[p.key]) && (p.free || this.paidMode) && String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false',
       capabilities: p.capabilities,
       model: p.model()
     }));

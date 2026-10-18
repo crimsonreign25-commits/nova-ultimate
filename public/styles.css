@@ -242,3 +242,88 @@ body.nova-listening .persona-hologram{border-color:rgba(88,255,206,.5);box-shado
 @keyframes caption-arrive{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 :focus-visible{outline:2px solid var(--quantum-cyan)!important;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){button,.rail-btn,.persona-btn,.nova-captions{transition:none!important;animation:none!important}}
+
+
+/* NOVA Quantum Interface refresh — preserves all existing panels, controls and persona holograms. */
+:root{--nova-ink:#050817;--nova-panel:rgba(9,18,39,.82);--nova-line:rgba(88,177,255,.22);--nova-cyan:#58e7ff;--nova-violet:#9b8cff;--nova-muted:#8fa7c7}
+html{scroll-behavior:smooth;scroll-padding-top:88px}
+body{color:#eaf4ff;background:#030611;background-image:radial-gradient(ellipse at 16% 0%,rgba(30,105,255,.17),transparent 38%),radial-gradient(ellipse at 88% 12%,rgba(127,58,255,.15),transparent 35%),radial-gradient(ellipse at 50% 100%,rgba(0,205,255,.055),transparent 45%),linear-gradient(145deg,#050a19 0%,#030611 55%,#07071b 100%);background-attachment:fixed}
+.nova-bg{opacity:.6;pointer-events:none}
+.app-shell{isolation:isolate}
+.command-rail{background:linear-gradient(180deg,rgba(7,15,34,.97),rgba(4,8,21,.98));border-right:1px solid rgba(82,164,255,.2);box-shadow:16px 0 50px rgba(0,0,0,.18)}
+.rail-brand{padding-bottom:22px;border-bottom:1px solid rgba(103,177,255,.12)}
+.nova-logo,.top-orb{box-shadow:0 0 24px rgba(65,181,255,.28),inset 0 0 16px rgba(107,224,255,.18);border:1px solid rgba(110,223,255,.45)}
+.rail-btn{border:1px solid transparent;border-radius:13px;margin:2px 0;min-height:42px}
+.rail-btn.active{background:linear-gradient(100deg,rgba(43,136,255,.22),rgba(125,83,255,.12));border-color:rgba(90,190,255,.3);box-shadow:inset 3px 0 var(--nova-cyan),0 0 24px rgba(49,121,255,.08)}
+.topbar{background:rgba(4,9,24,.76);backdrop-filter:blur(22px);border-bottom:1px solid rgba(89,167,255,.17)}
+.online-pill{border:1px solid rgba(73,235,194,.24);background:rgba(43,214,168,.07);border-radius:999px;padding:5px 9px}
+.dashboard{max-width:1680px}
+.reference-grid{gap:22px}
+.panel{position:relative;overflow:hidden;border:1px solid var(--nova-line);border-radius:22px;background:linear-gradient(145deg,rgba(13,28,57,.83),rgba(5,11,27,.91));box-shadow:0 20px 65px rgba(0,0,0,.24),inset 0 1px rgba(191,229,255,.045);backdrop-filter:blur(16px)}
+.panel:after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(120deg,rgba(89,203,255,.035),transparent 30%,transparent 70%,rgba(157,113,255,.035));z-index:0}
+.panel>*{position:relative;z-index:1}
+.reference-hero{min-height:330px;padding:clamp(20px,3vw,38px);border-color:rgba(89,182,255,.3);background:radial-gradient(ellipse at 78% 38%,rgba(39,124,255,.16),transparent 35%),radial-gradient(ellipse at 98% 6%,rgba(154,90,255,.12),transparent 34%),linear-gradient(135deg,rgba(12,27,55,.96),rgba(4,10,26,.96));}
+.reference-hero:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(94,183,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(94,183,255,.04) 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(90deg,#000,transparent 95%);opacity:.55}
+.hero-copy{max-width:650px}
+.hero-copy .eyebrow,.eyebrow{color:#69e4ff;letter-spacing:.19em;text-shadow:0 0 20px rgba(80,219,255,.25)}
+.hero-copy h1{letter-spacing:-.04em;line-height:1.1;text-wrap:balance;text-shadow:0 5px 35px rgba(53,131,255,.13)}
+.hero-copy>p:not(.eyebrow){color:#afc5e4;line-height:1.7}
+.hero-status{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.hero-status>span{font-size:.72rem;color:#b5d7ef;border:1px solid rgba(96,177,255,.19);border-radius:999px;background:rgba(6,18,40,.62);padding:7px 10px}
+.hero-art{filter:drop-shadow(0 0 32px rgba(65,137,255,.12))}
+.core-orb{box-shadow:0 0 28px rgba(76,194,255,.24),0 0 70px rgba(115,89,255,.2),inset 0 0 22px rgba(124,219,255,.2)}
+.planet-ring,.orbit{border-color:rgba(88,202,255,.38)}
+.quick-card{border:1px solid rgba(95,176,255,.2);border-radius:16px;background:linear-gradient(145deg,rgba(12,31,61,.86),rgba(6,13,31,.94));box-shadow:inset 0 1px rgba(205,236,255,.04);min-height:92px}
+.quick-card>b{color:var(--nova-cyan);text-shadow:0 0 16px rgba(88,231,255,.3)}
+.quick-card:hover{transform:translateY(-3px);border-color:rgba(88,231,255,.55);box-shadow:0 12px 32px rgba(22,112,255,.12)}
+.reference-chat{border-color:rgba(92,177,255,.3);box-shadow:0 18px 70px rgba(0,0,0,.28),0 0 35px rgba(31,104,255,.055)}
+.chat-header{border-bottom:1px solid rgba(101,170,255,.14)}
+.chat-feed{scrollbar-color:rgba(76,169,255,.35) transparent}
+.composer-form{border:1px solid rgba(89,185,255,.26);border-radius:19px;background:rgba(3,10,25,.88);box-shadow:0 0 0 4px rgba(38,117,255,.035),0 10px 35px rgba(0,0,0,.18)}
+.composer-form:focus-within{border-color:rgba(84,222,255,.58);box-shadow:0 0 0 4px rgba(63,171,255,.08),0 0 32px rgba(43,139,255,.1)}
+#messageInput{color:#eef7ff}
+#messageInput::placeholder{color:#7188aa}
+.send-btn{background:linear-gradient(135deg,#37c9f5,#557cff 58%,#9b72ff);box-shadow:0 0 22px rgba(70,151,255,.24);color:white}
+.round-tool,.live-chip,.ghost-btn,.secondary-btn,.feature-action{border-color:rgba(97,174,255,.22)}
+.feature-panel,.persona-panel,.settings-panel{transition:border-color .2s ease,box-shadow .2s ease}
+.feature-panel:hover{border-color:rgba(95,192,255,.34);box-shadow:0 20px 60px rgba(0,0,0,.23),0 0 28px rgba(42,127,255,.06)}
+input,textarea,select{color-scheme:dark}
+::selection{background:rgba(76,192,255,.3);color:#fff}
+@media(min-width:1100px){.reference-hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(230px,.65fr);align-items:center}.reference-hero .hero-copy{grid-column:1;grid-row:1}.reference-hero .hero-art{grid-column:2;grid-row:1;justify-self:center}.reference-hero .hero-actions{grid-column:1/-1}}
+@media(max-width:760px){body{background-attachment:scroll}.reference-grid{gap:14px}.reference-hero{padding:20px 16px;min-height:0}.hero-art{opacity:.82;transform:scale(.9);transform-origin:center}.hero-status{gap:6px}.hero-status>span{font-size:.66rem;padding:6px 8px}.panel{border-radius:17px}.quick-card{min-height:82px}.composer-form{border-radius:15px}.topbar{padding-top:env(safe-area-inset-top,0px)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.quick-card,.feature-panel{transition:none!important}}
+
+
+/* NOVA 21.4.3 — Quantum command interface refinement */
+:root{--quantum-cyan:#55e7ff;--quantum-violet:#a78bfa;--quantum-glass:rgba(7,20,48,.76)}
+body{background:#020615}
+.nova-bg{background:radial-gradient(ellipse at 48% 0%,rgba(28,89,205,.22),transparent 42%),radial-gradient(ellipse at 88% 42%,rgba(111,54,220,.13),transparent 34%),radial-gradient(ellipse at 10% 85%,rgba(0,199,255,.09),transparent 35%),linear-gradient(135deg,#020615 0%,#06142d 48%,#030817 100%)}
+.nova-bg i{border-color:rgba(83,191,255,.12);box-shadow:0 0 70px rgba(39,140,255,.08),inset 0 0 42px rgba(107,81,255,.025)}
+.command-rail{background:linear-gradient(180deg,rgba(3,12,31,.97),rgba(4,8,24,.94));border-right-color:rgba(75,166,255,.22);box-shadow:10px 0 42px rgba(0,0,0,.12)}
+.rail-brand .nova-logo,.top-orb{box-shadow:0 0 18px rgba(39,199,255,.22),inset 0 0 14px rgba(118,92,255,.2);background:radial-gradient(circle at 30% 25%,rgba(93,231,255,.24),rgba(36,103,255,.08) 48%,rgba(118,92,255,.18));border-color:rgba(83,210,255,.5)}
+.rail-btn{transition:background .2s ease,border-color .2s ease,transform .2s ease}
+.rail-btn:hover,.rail-btn.active{background:linear-gradient(100deg,rgba(24,133,255,.17),rgba(119,82,255,.12));border-color:rgba(78,190,255,.26);box-shadow:inset 2px 0 0 rgba(70,218,255,.8),0 0 22px rgba(29,103,255,.06)}
+.panel{border-color:rgba(83,159,255,.2);background:linear-gradient(145deg,rgba(8,25,55,.86),rgba(4,13,32,.83));box-shadow:0 22px 70px rgba(0,0,0,.24),inset 0 1px 0 rgba(178,220,255,.035);backdrop-filter:blur(18px)}
+.reference-hero{position:relative;isolation:isolate;overflow:hidden;border-color:rgba(82,174,255,.28);background:radial-gradient(ellipse at 78% 38%,rgba(76,86,255,.13),transparent 36%),linear-gradient(125deg,rgba(6,25,57,.96),rgba(5,13,35,.9) 60%,rgba(22,14,57,.78))}
+.reference-hero:after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(83,202,255,.035) 48%,transparent 72%);}
+.eyebrow,.agent-kicker{letter-spacing:.2em;text-shadow:0 0 18px rgba(63,195,255,.25)}
+.hero-art .core-glow{filter:blur(2px);opacity:.9}
+.hero-art .core-orb{box-shadow:0 0 22px rgba(43,194,255,.5),0 0 70px rgba(57,100,255,.24),inset 0 0 26px rgba(173,125,255,.35);border-color:rgba(106,222,255,.75);background:radial-gradient(circle at 34% 26%,rgba(140,247,255,.95),rgba(28,134,255,.55) 30%,rgba(102,65,255,.36) 68%,rgba(4,13,38,.9))}
+.hero-art .planet-ring{border-color:rgba(91,191,255,.24);box-shadow:0 0 22px rgba(59,131,255,.07)}
+.quick-card{border-color:rgba(74,155,255,.2);background:linear-gradient(145deg,rgba(12,35,71,.78),rgba(7,17,42,.78));transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+.quick-card:hover{transform:translateY(-2px);border-color:rgba(80,213,255,.48);box-shadow:0 12px 30px rgba(0,0,0,.18),0 0 24px rgba(42,132,255,.09)}
+.chat-panel{border-color:rgba(73,171,255,.25);background:linear-gradient(160deg,rgba(7,20,45,.93),rgba(3,12,29,.94))}
+.chat-header{border-bottom-color:rgba(77,157,255,.14)}
+.composer-form{border-color:rgba(72,174,255,.28);background:rgba(2,10,27,.83);box-shadow:0 0 0 1px rgba(51,131,255,.035),0 10px 36px rgba(0,0,0,.2)}
+.composer-form:focus-within{border-color:rgba(71,209,255,.65);box-shadow:0 0 0 3px rgba(39,199,255,.08),0 0 28px rgba(36,103,255,.12)}
+#messageInput{color:var(--text);caret-color:var(--quantum-cyan)}
+.send-btn{background:linear-gradient(135deg,#2ecfff,#456bff 62%,#8660ff);box-shadow:0 5px 20px rgba(40,126,255,.28);transition:transform .18s ease,filter .18s ease}
+.send-btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #65e5ff;outline-offset:3px}
+.online-pill,.mode-pill,.voice-state-pill{border-color:rgba(73,192,255,.22);box-shadow:inset 0 0 15px rgba(42,124,255,.045)}
+@media(max-width:900px){.reference-hero{background:radial-gradient(ellipse at 76% 24%,rgba(76,86,255,.13),transparent 36%),linear-gradient(145deg,rgba(6,25,57,.97),rgba(4,12,30,.94))}.composer-form{padding:10px}.hero-art .core-orb{box-shadow:0 0 18px rgba(43,194,255,.38),0 0 48px rgba(57,100,255,.18)}}
+@media(prefers-reduced-motion:reduce){.rail-btn,.quick-card,.send-btn{transition:none!important}.quick-card:hover,.send-btn:hover{transform:none}}
+
+
+/* NOVA Guardian 21.4.4 — consent-first, accessible security assessment UI. */
+.guardian-intro{color:#9bbbd8!important;line-height:1.6}.guardian-divider{height:1px;background:rgba(70,155,255,.18);margin:16px 0}.security-panel h3{font-size:.78rem;color:#c7e6ff;margin:10px 0 6px}.guardian-form{display:grid;gap:9px;margin-top:10px}.guardian-form>label:not(.guardian-consent){font-size:.62rem;color:#8eb2d2}.guardian-form input[type=url]{width:100%;min-width:0;background:#020d20;border:1px solid rgba(62,139,229,.28);border-radius:8px;color:white;padding:10px;font-size:.72rem}.guardian-consent{display:flex;align-items:flex-start;gap:8px;color:#8ba9c5;font-size:.62rem;line-height:1.5}.guardian-consent input,.guardian-checklist input{accent-color:#429bff;margin-top:2px;flex:0 0 auto}.guardian-form button{justify-self:start;max-width:100%}.guardian-status{margin-top:10px;color:#69d6ff;font-size:.65rem;line-height:1.5;overflow-wrap:anywhere}.guardian-report-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px}.guardian-report-heading h3{margin:0}.guardian-report-heading button{font-size:.62rem}.security-panel pre#guardianReport{max-height:360px;overflow:auto;border:1px solid rgba(54,139,230,.14);border-radius:9px;padding:10px;background:rgba(2,13,32,.7);font-size:.61rem;line-height:1.55;overflow-wrap:anywhere}.guardian-checklist{display:grid;gap:9px;margin-top:10px}.guardian-checklist label{display:flex;align-items:flex-start;gap:8px;color:#8ba9c5;font-size:.63rem;line-height:1.5}.guardian-checklist input{width:15px;height:15px}.guardian-form button:disabled{opacity:.55;cursor:wait}@media(max-width:760px){.guardian-form button{width:100%}.guardian-report-heading button{width:100%}.security-panel form{flex-wrap:wrap}.security-panel form input{min-width:100%}.security-panel form button{width:100%}}

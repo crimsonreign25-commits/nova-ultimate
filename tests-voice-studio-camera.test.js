@@ -32,8 +32,8 @@ test('Camera gracefully handles unsupported permissions and attaches captures',(
 });
 test('Versioned cache uses the current Voice Studio assets',()=>{
   const sw=readFileSync(new URL('./public/sw.js',import.meta.url),'utf8');
-  assert.match(html,/21\.4\.0-creative-studio/);
-  assert.match(sw,/nova-v21\.4\.0-creative-studio/);
-  assert.match(sw,/styles\.css\?v=21\.4\.0-creative-studio/);
-  assert.match(sw,/app\.js\?v=21\.4\.0-creative-studio/);
+  assert.match(html,/21\.5\.0-encrypted-router/);
+  assert.match(sw,/nova-v21\.5\.0-encrypted-router/);
+  assert.match(sw,/styles\.css\?v=21\.5\.0-encrypted-router/);
+  assert.match(sw,/app\.js\?v=21\.5\.0-encrypted-router/);
 });

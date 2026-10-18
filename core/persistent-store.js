@@ -1,12 +1,32 @@
 import { promises as fs } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { decryptStoreText, encryptStoreFileText, isEncryptedStoreText, storeEncryptionStatus } from './secure-store-crypto.js';
 
 export class PersistentStore {
   constructor({ root }) { this.root=root; this.files={conversations:join(root,'conversations.json'),access:join(root,'access.json'),audit:join(root,'audit.json'),profiles:join(root,'profiles.json'),notifications:join(root,'notifications.json'),devices:join(root,'devices.json')}; this.locks=new Map(); }
-  async init(){ await fs.mkdir(this.root,{recursive:true}); for(const file of Object.values(this.files)){try{await fs.access(file)}catch{await fs.writeFile(file,'[]','utf8');}} }
-  async read(kind){const raw=await fs.readFile(this.files[kind],'utf8');try{return JSON.parse(raw)}catch{return []}}
-  async write(kind,data){const file=this.files[kind];const tmp=`${file}.${process.pid}.tmp`;await fs.writeFile(tmp,JSON.stringify(data,null,2),'utf8');await fs.rename(tmp,file);return data;}
+  async init(){
+    const encryption = storeEncryptionStatus();
+    if (!encryption.valid) throw new Error(encryption.error);
+    if (process.env.NODE_ENV === 'production' && !encryption.enabled) throw new Error('Secure production startup blocked: configure NOVA_DATA_ENCRYPTION_KEY with a randomly generated 32-byte key encoded as 64 hex characters.');
+    await fs.mkdir(this.root,{recursive:true,mode:0o700});
+    for(const file of Object.values(this.files)){
+      try {
+        const raw=await fs.readFile(file,'utf8');
+        const decoded=decryptStoreText(raw);
+        JSON.parse(decoded.text);
+        // Migrate existing plaintext JSON into authenticated encryption on first secure startup.
+        if(encryption.enabled && !decoded.encrypted) await this.writeRaw(file, decoded.text);
+      } catch(error) {
+        if (error.code === 'ENOENT') await this.writeRaw(file, '[]');
+        else throw new Error(`NOVA secure store could not initialize ${file}: ${error.message}`);
+      }
+    }
+  }
+  async writeRaw(file, text){const tmp=`${file}.${process.pid}.tmp`;await fs.writeFile(tmp,encryptStoreFileText(text),{encoding:'utf8',mode:0o600});await fs.rename(tmp,file);}
+  async read(kind){const raw=await fs.readFile(this.files[kind],'utf8');const decoded=decryptStoreText(raw);return JSON.parse(decoded.text)}
+  async write(kind,data){await this.writeRaw(this.files[kind],JSON.stringify(data,null,2));return data;}
+  encryptionStatus(){return storeEncryptionStatus();}
   async mutate(kind,fn){const prev=this.locks.get(kind)||Promise.resolve();const next=prev.then(async()=>{const data=await this.read(kind);const out=await fn(data);await this.write(kind,out);return out;}).catch(()=>{});this.locks.set(kind,next);return next;}
   async listConversations(userId){const all=await this.read('conversations');return all.filter(x=>x.userId===userId).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));}
   async getConversation(userId,id){const all=await this.read('conversations');return all.find(x=>x.userId===userId&&x.id===id)||null;}

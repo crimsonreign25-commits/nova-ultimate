@@ -1,9 +1,9 @@
 [
   {
-    "id": "a77df06b-0818-45fa-bba1-907560d77967",
+    "id": "4fcaea61-b88c-4df7-a441-7f0bda3721c7",
     "goal": "perform destructive action",
     "status": "awaiting_approval",
-    "createdAt": "2026-10-16T01:57:09.751Z",
+    "createdAt": "2026-10-18T14:30:50.624Z",
     "plan": [
       {
         "id": "interpret",
@@ -33,7 +33,7 @@
     ],
     "trace": [
       {
-        "at": 1792115829751,
+        "at": 1792333850624,
         "id": "write",
         "label": "Write",
         "tool": "assist",
@@ -48,7 +48,7 @@
     "cancelRequested": false,
     "approval": {
       "step": "write",
-      "requestedAt": "2026-10-16T01:57:09.751Z",
+      "requestedAt": "2026-10-18T14:30:50.624Z",
       "approved": false
     },
     "lastEvent": {
@@ -60,10 +60,10 @@
     }
   },
   {
-    "id": "2b50f3e3-4e49-4a45-85fd-f2cf4990dd38",
+    "id": "a1e0d75b-2035-4887-9891-95346264a12f",
     "goal": "cancel me",
     "status": "cancelled",
-    "createdAt": "2026-10-16T01:57:09.751Z",
+    "createdAt": "2026-10-18T14:30:50.624Z",
     "plan": [
       {
         "id": "interpret",
@@ -105,70 +105,10 @@
     "cancelRequested": true
   },
   {
-    "id": "09111734-0cc2-4906-9c03-2a39a8639afb",
-    "goal": "perform destructive action",
-    "status": "awaiting_approval",
-    "createdAt": "2026-10-16T01:57:01.645Z",
-    "plan": [
-      {
-        "id": "interpret",
-        "label": "Interpret",
-        "tool": "reasoning",
-        "dependsOn": []
-      },
-      {
-        "id": "write",
-        "label": "Write",
-        "tool": "assist",
-        "permissions": [
-          "destructive"
-        ],
-        "dependsOn": [
-          "interpret"
-        ]
-      },
-      {
-        "id": "verify",
-        "label": "Verify",
-        "tool": "verification",
-        "dependsOn": [
-          "write"
-        ]
-      }
-    ],
-    "trace": [
-      {
-        "at": 1792115821645,
-        "id": "write",
-        "label": "Write",
-        "tool": "assist",
-        "status": "approval_required",
-        "detail": "Human approval required before consequential action."
-      }
-    ],
-    "results": [],
-    "attempts": 0,
-    "retries": 0,
-    "replans": 0,
-    "cancelRequested": false,
-    "approval": {
-      "step": "write",
-      "requestedAt": "2026-10-16T01:57:01.645Z",
-      "approved": false
-    },
-    "lastEvent": {
-      "id": "write",
-      "label": "Write",
-      "tool": "assist",
-      "status": "approval_required",
-      "detail": "Human approval required before consequential action."
-    }
-  },
-  {
-    "id": "a894ef57-4133-424c-a468-5f68b69ccf10",
+    "id": "ffe4fa2c-d376-47f8-9e22-0e864e62d076",
     "goal": "cancel me",
     "status": "cancelled",
-    "createdAt": "2026-10-16T01:57:01.646Z",
+    "createdAt": "2026-10-18T14:28:10.759Z",
     "plan": [
       {
         "id": "interpret",
@@ -210,10 +150,55 @@
     "cancelRequested": true
   },
   {
-    "id": "fbec86a9-84f8-40a0-8c4d-2edd510c7e19",
+    "id": "3d8437fa-aabf-47ea-a229-eaaf328d51e8",
     "goal": "cancel test",
     "status": "cancelled",
-    "createdAt": "2026-10-16T01:57:09.688Z",
+    "createdAt": "2026-10-18T14:30:04.198Z",
+    "plan": [
+      {
+        "id": "interpret",
+        "label": "Interpret objective",
+        "tool": "reasoning",
+        "dependsOn": []
+      },
+      {
+        "id": "research",
+        "label": "Gather live web intelligence",
+        "tool": "research",
+        "dependsOn": [
+          "interpret"
+        ]
+      },
+      {
+        "id": "build",
+        "label": "Design and build solution",
+        "tool": "assist",
+        "dependsOn": [
+          "interpret"
+        ]
+      },
+      {
+        "id": "verify",
+        "label": "Verify outputs and assemble result",
+        "tool": "verification",
+        "dependsOn": [
+          "research",
+          "build"
+        ]
+      }
+    ],
+    "trace": [],
+    "results": [],
+    "attempts": 0,
+    "retries": 0,
+    "replans": 0,
+    "cancelRequested": true
+  },
+  {
+    "id": "4026f0df-e224-4b0c-95cc-5400b8d73382",
+    "goal": "cancel test",
+    "status": "cancelled",
+    "createdAt": "2026-10-18T14:30:50.572Z",
     "plan": [
       {
         "id": "interpret",

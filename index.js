@@ -1,15 +1,18 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join, basename } from 'path';
 import { promises as fs } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { storeEncryptionStatus } from './core/secure-store-crypto.js';
 import os from 'node:os';
 import { PredictionEngine } from './core/prediction-engine.js';
 import { Orchestrator } from './core/orchestrator.js';
 import { MobileGuard } from './security/mobile-guard.js';
+import { NovaGuardian } from './security/guardian.js';
 import { AgentCore } from './core/agent-core.js';
 import { ToolRegistry } from './core/tool-registry.js';
 import { JobEngine } from './core/job-engine.js';
@@ -34,9 +37,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
+app.disable('x-powered-by');
+// Render and similar hosts terminate TLS at a trusted reverse proxy.
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use((req, res, next) => {
+  if (req.path === '/assist' || req.path.startsWith('/api/chat') || req.path.startsWith('/api/profile') || req.path.startsWith('/api/devices') || req.path.startsWith('/api/notifications')) {
+    res.set('Cache-Control', 'no-store, private, max-age=0');
+    res.set('Pragma', 'no-cache');
+  }
+  if (process.env.NODE_ENV === 'production' && !req.secure) {
+    const origin = process.env.NOVA_APP_URL ? new URL(process.env.NOVA_APP_URL).origin : `https://${req.headers.host}`;
+    return res.redirect(308, `${origin}${req.originalUrl}`);
+  }
+  next();
+});
 const prediction = new PredictionEngine();
 const orchestrator = new Orchestrator();
 const guard = new MobileGuard();
+const guardian = new NovaGuardian();
+const guardianLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Guardian assessment limit reached. Try again later.' } });
 const agentCore = new AgentCore({ maxSteps: 10, maxRetries: 2, recovery: { maxReplans: 2, baseDelayMs: 150, maxDelayMs: 1200 } });
 const tools = new ToolRegistry();
 const jobs = new JobEngine({ maxJobs: 100 });
@@ -150,7 +170,13 @@ async function extractAttachmentText(item) {
   return String(text).slice(0, MAX_EXTRACTED_CHARS);
 }
 
-app.use(cors());
+const allowedOrigins = new Set([process.env.NOVA_APP_URL, ...String(process.env.NOVA_ALLOWED_ORIGINS || '').split(',')].map(v => String(v || '').trim()).filter(Boolean));
+if (process.env.NODE_ENV !== 'production') { allowedOrigins.add('http://localhost:3000'); allowedOrigins.add('http://127.0.0.1:3000'); }
+app.use(cors({ origin(origin, callback) {
+  // Requests without an Origin header are server-to-server or same-origin navigations.
+  if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+  return callback(null, false);
+}, credentials: false, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization', 'X-Nova-Creator-Token', 'X-Nova-Viewer-Token'] }));
 app.use(express.json({ limit: '25mb' }));
 app.use(express.static(join(__dirname, 'public')));
 
@@ -174,9 +200,11 @@ async function optionalUser(req,res,next){
 }
 function ownedUserId(req, requested='guest'){
   const wanted=String(requested||'guest');
-  if(wanted==='guest')return 'guest';
-  if(req.user?.id===wanted)return wanted;
-  throw new Error('A signed-in NOVA account is required for this private profile.');
+  // Authenticated identity always comes from Supabase's verified session, never a body/query field.
+  if(req.user?.id) return String(req.user.id);
+  // Guest data stays in this browser's local storage; never put it in a shared server namespace.
+  void wanted;
+  throw new Error('Sign in to synchronize private NOVA data across devices. Guest data remains local to this browser.');
 }
 
 async function requireUser(req, res, next) {
@@ -189,6 +217,12 @@ async function requireUser(req, res, next) {
   req.user = data.user;
   next();
 }
+
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Too many sign-in attempts. Please wait and try again.' } });
+const assistantLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'NOVA chat is temporarily rate-limited. Please try again shortly.' } });
+app.use('/api/auth/signup', authLimiter);
+app.use('/api/auth/signin', authLimiter);
+app.use('/assist', assistantLimiter);
 
 app.get('/api/auth/config', async (_req, res) => {
   const configured = Boolean(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -237,6 +271,20 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/api/security/status', (_req, res) => {
+  const encryption = storeEncryptionStatus();
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    transport: process.env.NODE_ENV === 'production' ? 'https-required-at-proxy' : 'deployment-dependent',
+    storedDataEncryption: encryption.enabled ? 'AES-256-GCM enabled' : 'not enabled',
+    encryptionKeyValid: encryption.valid,
+    encryptionKeyRequiredInProduction: true,
+    chatCache: 'no-store',
+    accountIsolation: 'verified-session identity',
+    externalAi: String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false',
+    notes: ['AI providers process prompts sent to them; do not send secrets unless the provider is trusted.', 'Set NOVA_DATA_ENCRYPTION_KEY in the deployment environment and keep a secure backup of it.']
+  });
+});
 
 async function roleFor(req){
   const creatorToken=process.env.NOVA_CREATOR_TOKEN && String(req.headers['x-nova-creator-token']||'')===String(process.env.NOVA_CREATOR_TOKEN);
@@ -300,19 +348,20 @@ app.get('/api/access/capabilities', optionalUser, async (req,res)=>{
 app.get('/api/profile', optionalUser, async (req,res)=>{try{const userId=ownedUserId(req,req.query.user_id);res.json(await universal.getProfile(userId));}catch(e){res.status(401).json({error:e.message})}});
 app.put('/api/profile', optionalUser, async (req,res)=>{try{const userId=ownedUserId(req,req.body?.user_id);const profile=await universal.updateProfile(userId,req.body?.profile||{});res.json(profile);}catch(e){res.status(401).json({error:e.message})}});
 app.post('/api/safety/check', (req,res)=>res.json(universal.checkAction(String(req.body?.action||'unknown'),req.body||{})));
-app.post('/api/actions/prepare', (req,res)=>res.json(actionGateway.prepare({action:req.body?.action,target:req.body?.target,details:req.body?.details,userId:String(req.body?.user_id||'guest')})));
-app.post('/api/actions/confirm', async (req,res)=>{try{res.json(await actionGateway.confirm(req.body?.plan,{userId:String(req.body?.user_id||'guest'),confirmed:Boolean(req.body?.confirmed)}));}catch(e){res.status(403).json({error:e.message})}});
+app.post('/api/actions/prepare', requireUser, async (req,res)=>{try{const userId=String(req.user.id);const plan=actionGateway.prepare({action:req.body?.action,target:req.body?.target,details:req.body?.details,userId});await store.audit({actor:userId,action:'action-prepared',resource:plan.action,result:plan.risk});res.set('Cache-Control','no-store');res.json(plan);}catch(e){res.status(400).json({error:'Unable to prepare this action safely.'})}});
+app.post('/api/actions/confirm', requireUser, async (req,res)=>{try{res.set('Cache-Control','no-store');res.json(await actionGateway.confirm(req.body?.plan,{userId:String(req.user.id),confirmed:Boolean(req.body?.confirmed)}));}catch(e){res.status(403).json({error:e.message})}});
 app.post('/api/proactive/evaluate', (req,res)=>res.json(universal.proactive({context:req.body?.context||{}})));
-app.get('/api/notifications', async (req,res)=>{try{res.json({notifications:await store.listNotifications(String(req.query.user_id||'guest'))});}catch(e){res.status(500).json({error:e.message})}});
-app.post('/api/notifications/:id/read', async (req,res)=>{try{await store.markNotification(req.params.id,String(req.body?.user_id||'guest'));res.json({ok:true});}catch(e){res.status(500).json({error:e.message})}});
-app.post('/api/devices/register', async (req,res)=>{try{const item=await store.registerDevice({userId:String(req.body?.user_id||'guest'),name:String(req.body?.name||'NOVA Device'),platform:String(req.body?.platform||'web'),capabilities:req.body?.capabilities||{},id:req.body?.id});res.json(item);}catch(e){res.status(400).json({error:e.message})}});
-app.get('/api/devices', async (req,res)=>{try{res.json({devices:await store.listDevices(String(req.query.user_id||'guest'))});}catch(e){res.status(500).json({error:e.message})}});
+app.get('/api/notifications', requireUser, async (req,res)=>{try{res.set('Cache-Control','no-store');res.json({notifications:await store.listNotifications(String(req.user.id))});}catch(e){res.status(500).json({error:e.message})}});
+app.post('/api/notifications/:id/read', requireUser, async (req,res)=>{try{await store.markNotification(req.params.id,String(req.user.id));res.json({ok:true});}catch(e){res.status(500).json({error:e.message})}});
+app.post('/api/devices/register', requireUser, async (req,res)=>{try{const item=await store.registerDevice({userId:String(req.user.id),name:String(req.body?.name||'NOVA Device'),platform:String(req.body?.platform||'web'),capabilities:req.body?.capabilities||{},id:req.body?.id});res.json(item);}catch(e){res.status(400).json({error:e.message})}});
+app.get('/api/devices', requireUser, async (req,res)=>{try{res.set('Cache-Control','no-store');res.json({devices:await store.listDevices(String(req.user.id))});}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
-    version: '21.4.1',
+    version: '21.5.0',
     status: 'operational',
-    features: ['prediction','orchestration','security-scanning','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','role-based-access','role-specific-settings','read-only-restricted-access','access-audit','native-voice-core','creative-studio-preview','website-app-starter-generator','image-generation-provider-adapter','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa'],
+    features: ['prediction','orchestration','security-scanning','nova-guardian-passive-assessment','consent-gated-security-reports','cross-device-security-roadmap','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','role-based-access','role-specific-settings','read-only-restricted-access','access-audit','native-voice-core','creative-studio-preview','website-app-starter-generator','image-generation-provider-adapter','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa','aes-256-gcm-encrypted-server-store','privacy-aware-ai-router','secure-action-confirmation','https-redirect','security-headers','origin-allowlist','api-rate-limits'],
+    security: { storedDataEncryption: store.encryptionStatus(), externalAiEnabled: String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false' },
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
     voiceConfigured: voiceEngine.status().ready,
     cloudVoiceConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
@@ -332,6 +381,10 @@ app.post('/predict', (req, res) => {
   if (typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'message is required' });
   }
+  if (String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() === 'false') {
+    return res.status(503).json({ error: 'External AI routing is disabled by the NOVA privacy policy. Enable a trusted provider or use a local model.' });
+  }
+  res.set('Cache-Control', 'no-store, private, max-age=0');
   prediction.observe(user_id, message);
   res.json({ suggestions: prediction.predict(user_id, message) });
 });
@@ -373,8 +426,30 @@ app.post('/scan-url', (req, res) => {
   res.json(guard.scanUrl(url));
 });
 
-app.post('/assist', async (req, res) => {
-  const { message, user_id = 'default', persona = 'nova', attachments = [] } = req.body || {};
+// NOVA Guardian v1: explicit-consent, passive assessment of a public HTTP(S) server.
+// This endpoint never changes the target. Signed-in identity and consent are required.
+app.post('/api/guardian/assess', guardianLimiter, requireUser, async (req, res) => {
+  const target = String(req.body?.target || '').trim();
+  const consent = req.body?.consent === true;
+  const authorised = req.body?.authorised === true;
+  if (!consent || !authorised) return res.status(400).json({ error: 'Explicit consent and confirmation that you own or are authorised to assess this target are required.' });
+  if (!target || target.length > 2048) return res.status(400).json({ error: 'Enter a valid target URL (maximum 2048 characters).' });
+  try {
+    await store.audit({ actor: req.user.id, action: 'guardian-assessment-started', resource: target.slice(0, 250), result: 'consented-passive-assessment' });
+    const report = await guardian.assessPublicServer(target);
+    await store.audit({ actor: req.user.id, action: 'guardian-assessment-completed', resource: report.target, result: 'report-generated', findingCount: report.summary.findingCount });
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, report });
+  } catch (error) {
+    await store.audit({ actor: req.user.id, action: 'guardian-assessment-blocked-or-failed', resource: target.slice(0, 250), result: 'failed' }).catch(() => {});
+    res.status(400).json({ error: error.message || 'Guardian could not assess this target.' });
+  }
+});
+
+app.post('/assist', optionalUser, async (req, res) => {
+  const { message, persona = 'nova', attachments = [] } = req.body || {};
+  // Guests may chat, but client-supplied IDs never select a private account's context.
+  const user_id = req.user?.id ? String(req.user.id) : 'guest';
   if (typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'message is required' });
   }
@@ -382,8 +457,12 @@ app.post('/assist', async (req, res) => {
     return res.status(400).json({ error: 'A maximum of 5 attachments is supported.' });
   }
 
+  if (String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() === 'false') {
+    return res.status(503).json({ error: 'External AI routing is disabled by the NOVA privacy policy. Enable a trusted provider or use a local model.' });
+  }
+  res.set('Cache-Control', 'no-store, private, max-age=0');
   prediction.observe(user_id, message);
-  const saved = await store.getConversation(String(user_id), String(req.body?.conversation_id || ''));
+  const saved = req.user ? await store.getConversation(String(user_id), String(req.body?.conversation_id || '')) : null;
   const recentContext = saved?.messages?.slice(-12).map(m => ({ role: m.role, content: m.text })) || [];
 
   try {
@@ -473,7 +552,6 @@ app.post('/assist', async (req, res) => {
     }
     return res.status(502).json({
       error: 'All configured AI providers failed.',
-      details: error.message,
       providers: aiRouter.status()
     });
   }
@@ -496,20 +574,21 @@ app.post('/api/router/plan', (req, res) => {
   const message = typeof req.body?.message === 'string' ? req.body.message : '';
   const task = typeof req.body?.task === 'string' ? req.body.task : '';
   const needsVision = Boolean(req.body?.needsVision);
-  res.json(aiRouter.plan({ messages: [{ role: 'user', content: message }], needsVision, task }));
+  res.set('Cache-Control', 'no-store');
+  res.json({ ...aiRouter.plan({ messages: [{ role: 'user', content: message }], needsVision, task }), privacy: { externalProvidersEnabled: String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false', note: 'The selected provider receives the prompt and any included context or attachments.' } });
 });
 
-app.get('/api/chat', async (req,res)=>{ try{const userId=String(req.query.user_id||'mobile-user');res.json({conversations:await store.listConversations(userId)});}catch(e){res.status(500).json({error:e.message})} });
-app.get('/api/chat/:id', async (req,res)=>{ try{const userId=String(req.query.user_id||'mobile-user');const item=await store.getConversation(userId,req.params.id);if(!item)return res.status(404).json({error:'Conversation not found'});res.json(item);}catch(e){res.status(500).json({error:e.message})} });
-app.post('/api/chat', async (req,res)=>{ try{const userId=String(req.body?.user_id||'mobile-user');const item=await store.saveConversation(userId,req.body||{});res.json(item);}catch(e){res.status(400).json({error:e.message})} });
-app.delete('/api/chat/:id', async (req,res)=>{ try{const userId=String(req.query.user_id||'mobile-user');await store.deleteConversation(userId,req.params.id);res.json({ok:true});}catch(e){res.status(500).json({error:e.message})} });
-app.post('/api/access/request', async (req,res)=>{try{const item=await store.addAccessRequest({userId:String(req.body?.user_id||'anonymous'),resource:String(req.body?.resource||'advanced'),reason:String(req.body?.reason||'User requested restricted NOVA information.')});res.status(201).json({ok:true,request:item,notifyCreator:Boolean(process.env.NOVA_CREATOR_TOKEN)});}catch(e){res.status(500).json({error:e.message})}});
+app.get('/api/chat', requireUser, async (req,res)=>{ try{const userId=ownedUserId(req,req.query.user_id||'guest');res.set('Cache-Control','no-store');res.json({conversations:await store.listConversations(userId)});}catch(e){res.status(401).json({error:e.message})} });
+app.get('/api/chat/:id', requireUser, async (req,res)=>{ try{const userId=ownedUserId(req,req.query.user_id||'guest');const item=await store.getConversation(userId,req.params.id);if(!item)return res.status(404).json({error:'Conversation not found'});res.set('Cache-Control','no-store');res.json(item);}catch(e){res.status(401).json({error:e.message})} });
+app.post('/api/chat', requireUser, async (req,res)=>{ try{const userId=ownedUserId(req,req.body?.user_id||'guest');const item=await store.saveConversation(userId,req.body||{});res.set('Cache-Control','no-store');res.json(item);}catch(e){res.status(401).json({error:e.message})} });
+app.delete('/api/chat/:id', requireUser, async (req,res)=>{ try{const userId=ownedUserId(req,req.query.user_id||'guest');await store.deleteConversation(userId,req.params.id);res.set('Cache-Control','no-store');res.json({ok:true});}catch(e){res.status(401).json({error:e.message})} });
+app.post('/api/access/request', optionalUser, async (req,res)=>{try{const item=await store.addAccessRequest({userId:String(req.user?.id||'guest'),resource:String(req.body?.resource||'advanced'),reason:String(req.body?.reason||'User requested restricted NOVA information.')});res.status(201).json({ok:true,request:item,notifyCreator:Boolean(process.env.NOVA_CREATOR_TOKEN)});}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/access/requests', requireCreator, async (_req,res)=>res.json({requests:await store.listAccess()}));
 app.post('/api/access/requests/:id/decision', requireCreator, async (req,res)=>{const decision=['approved','denied'].includes(req.body?.decision)?req.body.decision:'denied';const item=await store.decideAccess(req.params.id,decision,'creator');if(!item)return res.status(404).json({error:'Access request not found'});res.json({ok:true,request:item});});
 app.get('/api/access/audit', requireCreator, async (_req,res)=>res.json({audit:await store.listAudit()}));
 
-app.get('/api/autonomous-progress/:id', (req,res)=>{const task=autonomousTasks.get(req.params.id);if(!task)return res.status(404).json({error:'Task not found'});res.json(task);});
-app.get('/api/autonomous-download/:id',(req,res)=>{const task=autonomousTasks.get(req.params.id);const file=task?.result?.artifact?.path;if(!task||task.status!=='completed'||!file)return res.status(404).json({error:'Verified result not available'});res.download(file,basename(file));});
+app.get('/api/autonomous-progress/:id', requireCreator, (req,res)=>{const task=autonomousTasks.get(req.params.id);if(!task)return res.status(404).json({error:'Task not found'});res.set('Cache-Control','no-store');res.json(task);});
+app.get('/api/autonomous-download/:id',requireCreator,(req,res)=>{const task=autonomousTasks.get(req.params.id);const file=task?.result?.artifact?.path;if(!task||task.status!=='completed'||!file)return res.status(404).json({error:'Verified result not available'});res.set('Cache-Control','no-store');res.download(file,basename(file));});
 
 app.get('/api/builder/workspaces', requireAdvanced, async (_req, res) => {
   try { const entries = await fs.readdir(workspace.root, { withFileTypes:true }); res.json({ workspaces: entries.filter(e=>e.isDirectory()).map(e=>({id:e.name})) }); }
@@ -685,7 +764,7 @@ app.get('/api/self-test', (_req, res) => {
     {name:'replanning',ok:Boolean(agentCore.replan(plan, plan.find(x=>x.id==='research'), new Error('Search provider unavailable'), {replans:0,usedStrategies:[]}))},
     {name:'static-frontend',ok:true}
   ];
-  res.json({ok:checks.every(c=>c.ok),version:'21.4.1',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
+  res.json({ok:checks.every(c=>c.ok),version:'21.5.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
 });
 
 app.get('/api/voices', (req, res) => {

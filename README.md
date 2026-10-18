@@ -126,3 +126,8 @@ NOVA uses server-verified access levels: Guest, User, Authorised Personnel, and 
 The default speech path uses the browser/device native Speech Synthesis API and requires no paid voice API. The server TTS adapter remains optional and is used as a fallback only when native speech is unavailable. Speech recognition and camera support still depend on browser/device permissions and HTTPS.
 
 Run `npm run test:syntax`, `npm test`, and `npm run test:creator-identity` before deployment. Runtime testing with configured Supabase/provider credentials and real device permissions is still required for release sign-off.
+
+
+## Secure deployment note (21.5.0)
+
+For production, configure `NOVA_DATA_ENCRYPTION_KEY` as a 64-character hexadecimal secret before starting NOVA. See `.env.example` and `RELEASE-21.5.0-SECURE-ROUTER.md`. Keep the key outside source control and back it up; losing it prevents decryption of stored data. Cloud AI providers receive prompts and attachments submitted for processing unless `NOVA_EXTERNAL_AI_ENABLED=false`.

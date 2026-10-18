@@ -10,8 +10,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/icons/nova-192.png" />
-  <title>NOVA Ultimate</title>
-  <link rel="stylesheet" href="/styles.css?v=21.4.0-creative-studio-21.4.1-quantum-persona" />
+  <title>NOVA Ultimate 21.5.0 — Secure Router</title>
+  <link rel="stylesheet" href="/styles.css?v=21.5.0-encrypted-router" />
 </head>
 <body>
   <a class="skip-link" href="#assistantWorkspace">Skip to NOVA conversation</a>
@@ -47,7 +47,7 @@
         <span class="tiny-label">ACTIVE PERSONA</span>
         <button class="persona-mini" id="railPersona"><span class="mini-avatar">N</span><span><b id="railPersonaName">NOVA</b><small>Main Assistant</small></span><i>⌄</i></button>
       </div>
-      <div class="rail-footer"><span class="status-dot"></span><span>System Online</span><em>v21.4.0</em></div>
+      <div class="rail-footer"><span class="status-dot"></span><span>System Online</span><em>v21.5.0</em></div>
     </aside>
 
     <div class="app-content">
@@ -104,6 +104,7 @@
                 </div>
                 <div id="micStatus" class="micro-status">Microphone ready.</div>
                 <div id="liveVoiceStatus" class="live-voice-status">Live Voice is off.</div>
+                <p id="aiPrivacyNotice" class="accessibility-note" role="status">Checking NOVA chat privacy settings…</p>
                 <div id="attachmentPreview" class="attachment-preview"></div>
                 <button type="button" id="clearAttachments" class="clear-attachments" hidden>Clear attachments</button>
               </form>
@@ -134,9 +135,32 @@
               </section>
 
               <section id="securityWorkspace" class="panel security-panel">
-                <div class="panel-title"><span>◇</span><div><b>Security Center</b><small>URL inspection</small></div><i>Online</i></div>
-                <form id="scanForm"><input id="scanInput" type="text" placeholder="https://example.com"/><button class="secondary-btn" type="submit">Scan URL</button></form>
-                <pre id="scanResult">Awaiting scan...</pre>
+                <div class="panel-title"><span>◇</span><div><b>NOVA Guardian</b><small>Security assessment & protection</small></div><i>Consent-gated</i></div>
+                <p class="guardian-intro">Inspect a URL for basic warning signs, or request a passive security-header assessment of a public server you own or are authorised to test. Guardian will not exploit, change, or upgrade a server in this version.</p>
+                <form id="scanForm"><input id="scanInput" type="url" placeholder="https://example.com" aria-label="URL to inspect"/><button class="secondary-btn" type="submit">Inspect URL</button></form>
+                <pre id="scanResult" aria-live="polite">Awaiting URL inspection…</pre>
+                <div class="guardian-divider"></div>
+                <h3>Authorised server assessment</h3>
+                <p>Runs a bounded HTTP HEAD request and reviews response headers only. Sign-in is required. Private-network targets, non-standard ports and redirects are blocked or not followed.</p>
+                <form id="guardianAssessmentForm" class="guardian-form">
+                  <label for="guardianTarget">Public server URL</label>
+                  <input id="guardianTarget" type="url" placeholder="https://your-domain.example" autocomplete="url" required maxlength="2048" />
+                  <label class="guardian-consent"><input id="guardianAuthorised" type="checkbox" required /> <span>I own this server or have explicit permission to assess it.</span></label>
+                  <label class="guardian-consent"><input id="guardianConsent" type="checkbox" required /> <span>I consent to NOVA performing this non-invasive, read-only check. No fixes or changes will be made.</span></label>
+                  <button id="guardianAssessButton" class="primary-btn" type="submit">Run passive assessment</button>
+                </form>
+                <div id="guardianStatus" class="guardian-status" role="status" aria-live="polite">No assessment has been run.</div>
+                <div id="guardianReportWrap" hidden><div class="guardian-report-heading"><h3>Assessment report</h3><button id="guardianDownloadReport" class="secondary-btn" type="button">Download JSON report</button></div><pre id="guardianReport"></pre></div>
+                <div class="guardian-divider"></div>
+                <h3>Phone protection checklist</h3>
+                <p>Web NOVA cannot silently inspect every Android app or remove malware. Use this checklist to review protection settings on your device; checked items are your own confirmations, not an automated malware scan.</p>
+                <div id="guardianPhoneChecklist" class="guardian-checklist">
+                  <label><input type="checkbox" /> <span>Run Google Play Protect from the Play Store.</span></label>
+                  <label><input type="checkbox" /> <span>Install Android system and security updates that are available.</span></label>
+                  <label><input type="checkbox" /> <span>Review recently installed apps and uninstall anything you do not recognise.</span></label>
+                  <label><input type="checkbox" /> <span>Review Accessibility, Device admin, VPN and “Install unknown apps” permissions.</span></label>
+                  <label><input type="checkbox" /> <span>Remove unnecessary permissions and enable a secure screen lock.</span></label>
+                </div>
               </section>
 
               <section id="agentPanel" class="panel agent-panel">
@@ -182,7 +206,7 @@
 
               <section id="settingsPanel" class="panel settings-panel">
                 <div class="panel-title"><span>⚙</span><div><b>Settings</b><small>NOVA configuration & accessibility</small></div></div>
-                <div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>21.4.0</b></div>
+                <div class="settings-row"><span>AI provider</span><b id="providerStatus">Checking...</b></div><div class="settings-row"><span>Voice</span><b id="settingsVoice">Checking...</b></div><div class="settings-row"><span>Version</span><b>21.5.0</b></div>
                 <section class="access-level-card" aria-labelledby="accessLevelTitle">
                   <div class="accessibility-heading"><div><b id="accessLevelTitle">🔐 Access level & capabilities</b><small>Features adapt to your verified account role</small></div><span id="accessLevelBadge">Checking…</span></div>
                   <p id="accessLevelDescription" class="accessibility-note" aria-live="polite">Checking your NOVA access level…</p>
@@ -313,6 +337,6 @@
   </div>
   <div id="novaCaptions" class="nova-captions" hidden aria-live="polite" aria-atomic="true"><span class="caption-label">NOVA</span><span id="captionText"></span></div>
   <div class="toast" id="toast" hidden></div>
-  <script src="/app.js?v=21.4.0-creative-studio-21.4.1-quantum-persona" defer></script>
+  <script src="/app.js?v=21.5.0-encrypted-router" defer></script>
 </body>
 </html>

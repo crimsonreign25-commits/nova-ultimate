@@ -20,4 +20,7 @@ const plan=gateway.prepare({action:'send',target:'message',userId:'u1'});
 assert.equal(plan.requiresConfirmation,true);
 assert.equal((await gateway.confirm(plan,{userId:'u1',confirmed:false})).status,'confirmation-required');
 assert.equal((await gateway.confirm(plan,{userId:'u1',confirmed:true})).status,'approved');
+await assert.rejects(gateway.confirm(plan,{userId:'u1',confirmed:true}),/authorization mismatch or unknown plan/);
+const forged=gateway.prepare({action:'delete',target:'file',userId:'u1'});
+await assert.rejects(gateway.confirm({...forged,target:'another-file'},{userId:'u1',confirmed:true}),/modified after preparation/);
 console.log('NOVA universal assistant tests PASS');
