@@ -33,6 +33,7 @@ export class AIRouter {
     this.fetch = fetchImpl;
     this.discovery = discovery || new ProviderDiscovery({ fetchImpl });
     this.paidMode = envBool('NOVA_PAID_MODE', false);
+    this.metrics = new Map(); // providerId -> { attempts, successes, failures, totalLatencyMs, avgLatencyMs, lastUsed, quotaExceeded }
 
     this.providers = [
       {
@@ -40,6 +41,8 @@ export class AIRouter {
         label: 'Groq',
         key: 'GROQ_API_KEY',
         free: true,
+        costTier: 'free',
+        quotaLimitPerMin: 30,
         capabilities: { text: true, vision: true },
         strengths: ['general', 'coding', 'reasoning', 'vision'],
         model: () => process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
@@ -50,6 +53,8 @@ export class AIRouter {
         label: 'Cerebras',
         key: 'CEREBRAS_API_KEY',
         free: true,
+        costTier: 'free',
+        quotaLimitPerMin: 30,
         capabilities: { text: true, vision: false },
         strengths: ['general', 'coding', 'reasoning'],
         model: () => process.env.CEREBRAS_MODEL || 'gpt-oss-120b',
@@ -61,6 +66,8 @@ export class AIRouter {
         label: 'OpenRouter',
         key: 'OPENROUTER_API_KEY',
         free: true,
+        costTier: 'free',
+        quotaLimitPerMin: 20,
         capabilities: { text: true, vision: true },
         strengths: ['general', 'research', 'creative', 'vision'],
         model: function () { return this.runtimeModel || process.env.OPENROUTER_FREE_MODEL || 'openrouter/free'; },
@@ -75,12 +82,34 @@ export class AIRouter {
         label: 'Gemini',
         key: 'GEMINI_API_KEY',
         free: true,
+        costTier: 'free',
+        quotaLimitPerMin: 15,
         capabilities: { text: true, vision: true },
         strengths: ['general', 'reasoning', 'research', 'creative', 'vision'],
         model: () => process.env.GEMINI_MODEL || 'gemini-3.8-flash',
         endpoint: 'https://generativelanguage.googleapis.com/v1beta/models'
       }
     ];
+
+    for (const p of this.providers) {
+      this.metrics.set(p.id, { attempts: 0, successes: 0, failures: 0, totalLatencyMs: 0, avgLatencyMs: 0, lastUsed: null, quotaExceeded: false });
+    }
+  }
+
+  recordMetric(providerId, latencyMs, success, isQuota = false) {
+    const m = this.metrics.get(providerId) || { attempts: 0, successes: 0, failures: 0, totalLatencyMs: 0, avgLatencyMs: 0, lastUsed: null, quotaExceeded: false };
+    m.attempts += 1;
+    m.lastUsed = new Date().toISOString();
+    if (success) {
+      m.successes += 1;
+      m.totalLatencyMs += latencyMs;
+      m.avgLatencyMs = Math.round(m.totalLatencyMs / m.successes);
+      m.quotaExceeded = false;
+    } else {
+      m.failures += 1;
+      if (isQuota) m.quotaExceeded = true;
+    }
+    this.metrics.set(providerId, m);
   }
 
   configuredProviders({ needsVision = false } = {}) {
@@ -100,15 +129,41 @@ export class AIRouter {
     return rankByTask(available, selectedTask, preferred);
   }
 
+  explainNoProvider({ needsVision = false } = {}) {
+    if (String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() === 'false') {
+      return 'External AI routing is disabled by the NOVA privacy policy. Enable external AI or configure a local model.';
+    }
+    const unconfigured = this.providers.filter(p => !process.env[p.key]);
+    if (unconfigured.length === this.providers.length) {
+      return 'No AI provider API keys are configured on the server. Set GROQ_API_KEY, CEREBRAS_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY in process environment.';
+    }
+    if (needsVision) {
+      return 'No configured free AI provider currently supports vision/multimodal requests. Set GROQ_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY.';
+    }
+    const quotaExceeded = this.providers.filter(p => this.metrics.get(p.id)?.quotaExceeded);
+    if (quotaExceeded.length > 0) {
+      return `Configured providers (${quotaExceeded.map(p => p.label).join(', ')}) exceeded rate or quota limits.`;
+    }
+    return 'No configured free AI provider is currently available.';
+  }
+
   plan({ messages = [], needsVision = false, task = '' } = {}) {
     const selectedTask = classifyTask({ messages, needsVision, task });
     const ranked = this.rankProviders({ needsVision, task: selectedTask });
+    const noProviderReason = ranked.length === 0 ? this.explainNoProvider({ needsVision }) : null;
     return {
       task: selectedTask,
       selectionPolicy: this.paidMode ? 'free-and-paid-enabled' : 'free-first-only',
       privacy: { externalProvidersEnabled: String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false', sendsPromptToProvider: true },
-      available: ranked.map((p) => ({ id: p.id, model: p.model(), score: scoreProvider(p, selectedTask) })),
+      available: ranked.map((p) => ({
+        id: p.id,
+        model: p.model(),
+        score: scoreProvider(p, selectedTask),
+        costTier: p.costTier,
+        avgLatencyMs: this.metrics.get(p.id)?.avgLatencyMs || 0
+      })),
       providers: ranked.map((p) => p.id),
+      noProviderReason,
       supportedTasks: taskList()
     };
   }
@@ -121,24 +176,35 @@ export class AIRouter {
     await this.applyDynamicModelSelection({ task: selectedTask, needsVision });
     const ranked = this.rankProviders({ needsVision, task: selectedTask });
     if (!ranked.length) {
-      const reason = needsVision
-        ? 'No configured free AI provider supports this vision request.'
-        : 'No configured free AI provider is available.';
-      throw Object.assign(new Error(reason), { code: 'NO_PROVIDER' });
+      const reason = this.explainNoProvider({ needsVision });
+      throw Object.assign(new Error(reason), { code: 'NO_PROVIDER', reason });
     }
 
     const failures = [];
     for (const provider of ranked) {
+      const startTime = Date.now();
       try {
         const result = provider.id === 'gemini'
           ? await this.callGemini(provider, messages, { temperature, maxTokens, needsVision })
           : await this.callOpenAICompatible(provider, messages, { temperature, maxTokens });
 
         if (result.text) {
-          return { ...result, provider: provider.id, model: result.model || provider.model(), task: selectedTask };
+          const latencyMs = Date.now() - startTime;
+          this.recordMetric(provider.id, latencyMs, true);
+          return {
+            ...result,
+            provider: provider.id,
+            model: result.model || provider.model(),
+            task: selectedTask,
+            latencyMs,
+            costTier: provider.costTier || 'free'
+          };
         }
+        this.recordMetric(provider.id, Date.now() - startTime, false);
         failures.push(`${provider.id}: empty response`);
       } catch (error) {
+        const isQuota = /429|quota|rate limit/i.test(error.message);
+        this.recordMetric(provider.id, Date.now() - startTime, false, isQuota);
         failures.push(`${provider.id}: ${error.message}`);
       }
     }
@@ -238,15 +304,27 @@ export class AIRouter {
   }
 
   status() {
-    return this.providers.map((p) => ({
-      id: p.id,
-      label: p.label,
-      strengths: p.strengths || [],
-      configured: Boolean(process.env[p.key]),
-      free: p.free,
-      enabled: Boolean(process.env[p.key]) && (p.free || this.paidMode) && String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false',
-      capabilities: p.capabilities,
-      model: p.model()
-    }));
+    return this.providers.map((p) => {
+      const metric = this.metrics.get(p.id) || {};
+      return {
+        id: p.id,
+        label: p.label,
+        strengths: p.strengths || [],
+        costTier: p.costTier || 'free',
+        configured: Boolean(process.env[p.key]),
+        free: p.free,
+        enabled: Boolean(process.env[p.key]) && (p.free || this.paidMode) && String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false',
+        capabilities: p.capabilities,
+        model: p.model(),
+        metrics: {
+          attempts: metric.attempts || 0,
+          successes: metric.successes || 0,
+          failures: metric.failures || 0,
+          avgLatencyMs: metric.avgLatencyMs || 0,
+          quotaExceeded: Boolean(metric.quotaExceeded),
+          lastUsed: metric.lastUsed || null
+        }
+      };
+    });
   }
 }
