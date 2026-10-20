@@ -26,6 +26,7 @@ import { NovaUniversal } from './core/nova-universal.js';
 import { ActionGateway } from './core/action-gateway.js';
 import { accessPolicyFor } from './core/access-control.js';
 import { createPreview, generateImage } from './core/creative-studio.js';
+import { NovaAICore } from './core/nova-ai-core.js';
 import AdmZip from 'adm-zip';
 import mammoth from 'mammoth';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
@@ -68,6 +69,8 @@ const voiceEngine = new VoiceEngine();
 const store = new PersistentStore({ root: join(__dirname, 'data', 'nova-store') });
 const universal = new NovaUniversal({ store });
 const actionGateway = new ActionGateway({ audit: event => store.audit(event) });
+const novaCore = new NovaAICore({ agentCore, aiRouter, toolRegistry: tools, persistentStore: store, jobEngine: jobs, autonomousExecutor: autonomous });
+
 await workspace.init();
 await store.init();
 const autonomousTasks = new Map();
@@ -355,12 +358,45 @@ app.get('/api/notifications', requireUser, async (req,res)=>{try{res.set('Cache-
 app.post('/api/notifications/:id/read', requireUser, async (req,res)=>{try{await store.markNotification(req.params.id,String(req.user.id));res.json({ok:true});}catch(e){res.status(500).json({error:e.message})}});
 app.post('/api/devices/register', requireUser, async (req,res)=>{try{const item=await store.registerDevice({userId:String(req.user.id),name:String(req.body?.name||'NOVA Device'),platform:String(req.body?.platform||'web'),capabilities:req.body?.capabilities||{},id:req.body?.id});res.json(item);}catch(e){res.status(400).json({error:e.message})}});
 app.get('/api/devices', requireUser, async (req,res)=>{try{res.set('Cache-Control','no-store');res.json({devices:await store.listDevices(String(req.user.id))});}catch(e){res.status(500).json({error:e.message})}});
+
+// Admin Diagnostics Endpoint
+app.get('/api/admin/diagnostics', requireAdvanced, async (_req, res) => {
+  try {
+    const diagnostics = await novaCore.adminDiagnostics();
+    res.set('Cache-Control', 'no-store');
+    res.json(diagnostics);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Memory Lesson Management Endpoints
+app.get('/api/memory/lessons', requireUser, async (req, res) => {
+  try {
+    const lessons = await store.listLessons(String(req.user.id));
+    res.set('Cache-Control', 'no-store');
+    res.json({ lessons });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/memory/lessons/:id', requireUser, async (req, res) => {
+  try {
+    await store.deleteLesson(String(req.user.id), req.params.id);
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, deleted: req.params.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
     version: '21.5.0',
     status: 'operational',
-    features: ['prediction','orchestration','security-scanning','nova-guardian-passive-assessment','consent-gated-security-reports','cross-device-security-roadmap','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','role-based-access','role-specific-settings','read-only-restricted-access','access-audit','native-voice-core','creative-studio-preview','website-app-starter-generator','image-generation-provider-adapter','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa','aes-256-gcm-encrypted-server-store','privacy-aware-ai-router','secure-action-confirmation','https-redirect','security-headers','origin-allowlist','api-rate-limits'],
+    features: ['prediction','orchestration','security-scanning','nova-guardian-passive-assessment','consent-gated-security-reports','cross-device-security-roadmap','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','role-based-access','role-specific-settings','read-only-restricted-access','access-audit','native-voice-core','creative-studio-preview','website-app-starter-generator','image-generation-provider-adapter','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa','aes-256-gcm-encrypted-server-store','privacy-aware-ai-router','secure-action-confirmation','https-redirect','security-headers','origin-allowlist','api-rate-limits','central-ai-core','specialist-agents','admin-diagnostics','persistent-lessons'],
     security: { storedDataEncryption: store.encryptionStatus(), externalAiEnabled: String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false' },
     groqConfigured: Boolean(process.env.GROQ_API_KEY),
     voiceConfigured: voiceEngine.status().ready,
@@ -457,6 +493,12 @@ app.post('/assist', optionalUser, async (req, res) => {
     return res.status(400).json({ error: 'A maximum of 5 attachments is supported.' });
   }
 
+  // Defend prompt injection
+  const injection = novaCore.detectPromptInjection(message);
+  if (injection.flagged) {
+    return res.status(400).json({ error: `Security policy blocked request: ${injection.reason}` });
+  }
+
   if (String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() === 'false') {
     return res.status(503).json({ error: 'External AI routing is disabled by the NOVA privacy policy. Enable a trusted provider or use a local model.' });
   }
@@ -546,7 +588,7 @@ app.post('/assist', optionalUser, async (req, res) => {
     console.error('Assist request failed:', error);
     if (error.code === 'NO_PROVIDER') {
       return res.status(503).json({
-        error: 'No configured free AI provider is available.',
+        error: error.message || 'No configured free AI provider is available.',
         providers: aiRouter.status()
       });
     }
@@ -685,18 +727,18 @@ app.post('/api/agent', requireCreator, async (req, res) => {
     if(step.id==='security'){
       const url=(task.match(/https?:\/\/[^\s]+/i)||[])[0];
       if(!url) return { ok:true, skipped:true, output:null, note:'No explicit URL found; security inspection was not applicable.' };
-      if(strategy === 'risk-review') return { ok:true, degraded:true, output:await tools.execute('assist',{message:`The security scanner is unavailable. Perform a cautious, clearly labeled risk review of this target and state that it is not a definitive security scan: ${task}`,user_id,persona,attachments},{job}) };
-      return { ok:true, output:await tools.execute('security',{url},{job}) };
+      if(strategy === 'risk-review') return { ok:true, degraded:true, output:await tools.execute('assist',{message:`The security scanner is unavailable. Perform a cautious, clearly labeled risk review of this target and state that it is not a definitive security scan: ${task}`,user_id,persona,attachments},{job,approved:true}) };
+      return { ok:true, output:await tools.execute('security',{url},{job,approved:true}) };
     }
     if(step.id==='research'){
-      if(strategy === 'knowledge-fallback') return { ok:true, degraded:true, output:await tools.execute('assist',{message:`Live research is unavailable. Give a clearly labeled knowledge fallback, state that current web verification was unavailable, and list facts that require live checking: ${task}`,user_id,persona,attachments},{job}) };
-      return { ok:true, output:await tools.execute('research',{query:task},{job}) };
+      if(strategy === 'knowledge-fallback') return { ok:true, degraded:true, output:await tools.execute('assist',{message:`Live research is unavailable. Give a clearly labeled knowledge fallback, state that current web verification was unavailable, and list facts that require live checking: ${task}`,user_id,persona,attachments},{job,approved:true}) };
+      return { ok:true, output:await tools.execute('research',{query:task},{job,approved:true}) };
     }
     if(step.id==='analyze'){
       const prompt = strategy === 'reduce-context'
         ? `Analyze the supplied attachments with reduced context. Focus on highest-signal facts, uncertainty, risks and actions: ${task}`
         : `Analyze the supplied attachments for this goal. Extract key facts, risks, patterns, uncertainties and actionable findings: ${task}`;
-      return { ok:true, degraded:strategy === 'reduce-context', output:await tools.execute('assist',{message:prompt,user_id,persona,attachments},{job}) };
+      return { ok:true, degraded:strategy === 'reduce-context', output:await tools.execute('assist',{message:prompt,user_id,persona,attachments},{job,approved:true}) };
     }
     if(step.id==='build'){
       const prompt = strategy === 'reduce-scope'
@@ -704,9 +746,9 @@ app.post('/api/agent', requireCreator, async (req, res) => {
         : strategy === 'solution-plan'
           ? `The build execution path is unavailable. Produce architecture, implementation steps, assumptions, tests and verification criteria for: ${task}`
           : `Act as NOVA's solution architect and builder. Produce a practical implementation plan, solution details, assumptions, tests and verification criteria for: ${task}`;
-      return { ok:true, degraded:['reduce-scope','solution-plan'].includes(strategy), output:await tools.execute('assist',{message:prompt,user_id,persona,attachments},{job}) };
+      return { ok:true, degraded:['reduce-scope','solution-plan'].includes(strategy), output:await tools.execute('assist',{message:prompt,user_id,persona,attachments},{job,approved:true}) };
     }
-    return { ok:true, output:await tools.execute('assist',{message:task,user_id,persona,attachments},{job}) };
+    return { ok:true, output:await tools.execute('assist',{message:task,user_id,persona,attachments},{job,approved:true}) };
   };
 
   try {
@@ -730,9 +772,9 @@ app.post('/api/jobs/:id/approve', requireCreator, async (req, res) => {
       if (step.id === 'security') {
         const url=(current.goal.match(/https?:\/\/[^\s]+/i)||[])[0];
         if (!url) return {ok:true,skipped:true};
-        return {ok:true,output:await tools.execute('security',{url},{job:current})};
+        return {ok:true,output:await tools.execute('security',{url},{job:current,approved:true})};
       }
-      return {ok:true,output:await tools.execute('assist',{message:current.goal,user_id:'default',persona:'nova',attachments:[]},{job:current})};
+      return {ok:true,output:await tools.execute('assist',{message:current.goal,user_id:'default',persona:'nova',attachments:[]},{job:current,approved:true})};
     }}));
     res.json({...currentJobSummary(job),ok:job.status==='completed'});
   } catch(error) { res.status(502).json({...currentJobSummary(job),ok:false,error:error.message}); }
