@@ -1,6 +1,6 @@
 {
   "name": "nova-ultimate",
-  "version": "21.6.0",
+  "version": "21.6.1",
   "description": "NOVA Ultimate with evidence-led evolution, opt-in feedback, verification-gated upgrade proposals, encrypted storage, and privacy-aware AI routing.",
   "type": "module",
   "scripts": {

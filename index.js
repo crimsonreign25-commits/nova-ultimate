@@ -396,7 +396,7 @@ app.delete('/api/memory/lessons/:id', requireUser, async (req, res) => {
 app.get('/api/status', (_req, res) => {
   res.json({
     name: 'NOVA Ultimate',
-    version: '21.6.0',
+    version: '21.6.1',
     status: 'operational',
     features: ['prediction','orchestration','security-scanning','nova-guardian-passive-assessment','consent-gated-security-reports','cross-device-security-roadmap','live-voice','camera','multimodal','document-intelligence','web-research','memory','command-center','autonomous-agent','tool-registry','job-engine','retry-replanning','verification','adaptive-interface','live-telemetry','goal-planning','adaptive-recovery','failure-classification','bounded-replanning','job-cancellation','autonomous-executor','approval-gates','execution-checkpoints','bounded-autonomy','builder-mode','workspace-sandbox','safe-file-operations','static-verification','artifact-packaging','autonomous-builder','multi-file-edits','builder-recovery','transactional-rollback','durable-jobs','workspace-manifest','project-import','safe-python-tests','html-structural-tests','workspace-move-delete','artifact-hashing','builder-review-gates','reference-ui','capability-dashboard','mobile-preview','persistent-chat','conversation-context','execution-progress','creator-access-control','role-based-access','role-specific-settings','read-only-restricted-access','access-audit','native-voice-core','creative-studio-preview','website-app-starter-generator','image-generation-provider-adapter','global-provider-discovery','dynamic-model-selection','universal-accessibility','screen-reader-support','keyboard-navigation','live-captions','voice-first-mode','adaptive-display','reduced-motion','focus-mode','mobile-pwa','aes-256-gcm-encrypted-server-store','privacy-aware-ai-router','secure-action-confirmation','https-redirect','security-headers','origin-allowlist','api-rate-limits','central-ai-core','specialist-agents','admin-diagnostics','persistent-lessons','evidence-led-evolution','opt-in-experience-records','feedback-learning-signals','verification-led-evaluations','upgrade-proposals','creator-approval-gates','no-automatic-code-deployment'],
     security: { storedDataEncryption: store.encryptionStatus(), externalAiEnabled: String(process.env.NOVA_EXTERNAL_AI_ENABLED || 'true').toLowerCase() !== 'false' },
@@ -847,7 +847,7 @@ app.get('/api/self-test', (_req, res) => {
     {name:'static-frontend',ok:true}
   ];
   checks.push({name:'evolution-engine',ok:typeof evolution.status==='function'});
-  res.json({ok:checks.every(c=>c.ok),version:'21.6.0',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
+  res.json({ok:checks.every(c=>c.ok),version:'21.6.1',checks,external:{groq:Boolean(process.env.GROQ_API_KEY),elevenlabs:Boolean(process.env.ELEVENLABS_API_KEY)},voice:voiceEngine.status(),router:{paidMode:Boolean(process.env.NOVA_PAID_MODE==='true'),providers:aiRouter.status()},openCore:true,builder:{workspaceRoot:workspace.root,safePaths:true,arbitraryShell:false,autonomousBuild:true,rollback:true,verification:true}});
 });
 
 app.get('/api/voices', (req, res) => {

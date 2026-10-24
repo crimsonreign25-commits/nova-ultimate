@@ -1,10 +1,10 @@
 
-const CACHE = 'nova-v21.6.0-quantum-core';
+const CACHE = 'nova-v21.6.1-cache-reset';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=21.6.0-quantum-core',
-  '/app.js?v=21.6.0-quantum-core',
+  '/styles.css?v=21.6.1-cache-reset',
+  '/app.js?v=21.6.1-cache-reset',
   '/manifest.webmanifest'
 ];
 
@@ -21,7 +21,7 @@ self.addEventListener('activate', event => {
     caches.keys()
       .then(keys => Promise.all(
         keys
-          .filter(key => /^nova-v\d/.test(key) && key !== CACHE)
+          .filter(key => key.startsWith('nova-') && key !== CACHE)
           .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
