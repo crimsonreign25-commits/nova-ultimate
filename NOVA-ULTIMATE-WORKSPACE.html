@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOVA Ultimate — Next-Gen AI Ecosystem & Command Center</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0a0a10',
+                        panel: 'rgba(15, 17, 26, 0.75)',
+                        borderGlow: 'rgba(0, 240, 255, 0.25)',
+                        cyanGlow: '#00f0ff',
+                        magentaGlow: '#ff007f',
+                        purpleGlow: '#7000ff',
+                        emeraldGlow: '#00ff9d',
+                    },
+                    boxShadow: {
+                        'neon-cyan': '0 0 15px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.2)',
+                        'neon-magenta': '0 0 15px rgba(255, 0, 127, 0.4), inset 0 0 10px rgba(255, 0, 127, 0.2)',
+                        'neon-purple': '0 0 15px rgba(112, 0, 255, 0.4), inset 0 0 10px rgba(112, 0, 255, 0.2)',
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.67)',
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2.5s infinite alternate',
+                        'scanline': 'scanline 8s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%': { boxShadow: '0 0 10px rgba(0,240,255,0.2)' },
+                            '100%': { boxShadow: '0 0 25px rgba(0,240,255,0.7), 0 0 5px rgba(255,0,127,0.5)' }
+                        },
+                        scanline: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(1000%)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-6px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0a0a10;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Subtle grid background */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(112, 0, 255, 0.07) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 240, 255, 0.07) 1px, transparent 1px);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(10, 10, 16, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 240, 255, 0.3);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 240, 255, 0.6);
+        }
+
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(16, 18, 30, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 240, 255, 0.18);
+        }
+
+        .glass-panel-magenta {
+            background: rgba(22, 16, 30, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 0, 127, 0.22);
+        }
+
+        .glass-panel-purple {
+            background: rgba(20, 16, 35, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(112, 0, 255, 0.22);
+        }
+
+        /* Scanning overlay effect */
+        .scanline-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 240, 255, 0.02) 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        /* Code Highlighting Sim */
+        .code-keyword { color: #ff007f; font-weight: bold; }
+        .code-func { color: #00f0ff; }
+        .code-string { color: #00ff9d; }
+        .code-comment { color: #64748b; italic; }
+        .code-type { color: #7000ff; font-weight: 600; }
+    </style>
+</head>
+<body class="bg-grid min-h-screen relative flex flex-col justify-between selection:bg-cyanGlow selection:text-black">
+
+    <div class="scanline-overlay"></div>
+
+    <!-- MAIN WRAPPER -->
+    <div class="relative z-10 flex flex-col min-h-screen">
+
+        <!-- HEADER / NAVIGATION -->
+        <header class="glass-panel sticky top-0 z-50 px-6 py-3 border-b border-cyan-500/20 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="relative flex items-center justify-center w-10 h-10 rounded-lg bg-cyan-950/80 border border-cyan400 shadow-neon-cyan">
+                    <i data-lucide="cpu" class="w-6 h-6 text-cyanGlow animate-pulse"></i>
+                    <span class="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-cyanGlow"></span>
+                    </span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold text-xl tracking-wider text-white">NOVA <span class="text-cyanGlow">ULTIMATE</span></h1>
+                        <span class="text-[10px] px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/50 text-cyan-300 font-mono">DEMO WORKSPACE • CONNECT A SERVER</span>
+                    </div>
+                    <p class="text-xs text-slate-400 tracking-tight">Quantum-Inspired Autonomous AI Workspace Ecosystem</p>
+                </div>
+            </div>
+
+            <!-- CORE NAV TABS -->
+            <nav class="flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800 space-x-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-cyanGlow bg-cyan-950/50 border border-cyan-500/30">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+                </button>
+                <button onclick="switchTab('lifecycle')" id="nav-lifecycle" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">
+                    <i data-lucide="git-merge" class="w-4 h-4"></i> Lifecycle Engine
+                </button>
+                <button onclick="switchTab('sandbox')" id="nav-sandbox" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">
+                    <i data-lucide="box" class="w-4 h-4"></i> Sandbox & Repository
+                </button>
+                <button onclick="switchTab('studio')" id="nav-studio" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">
+                    <i data-lucide="code-2" class="w-4 h-4"></i> Creative Studio
+                </button>
+                <button onclick="switchTab('evolution')" id="nav-evolution" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">
+                    <i data-lucide="workflow" class="w-4 h-4"></i> Evolution Engine
+                </button>
+
+            </nav>
+
+            <!-- RIGHT SYSTEM BADGES -->
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg glass-panel-magenta text-xs font-mono text-magentaGlow">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-magentaGlow"></i>
+                    <span>GUARDIAN 21.4.4: ACTIVE</span>
+                </div>
+                <div id="voice-indicator" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs font-mono text-emerald-400 cursor-pointer" onclick="toggleVoiceSim()">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+                    <span id="voice-text">VOICE LIVE</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTAINER -->
+        <main class="flex-1 p-4 md:p-6 space-y-6 max-w-[1700px] mx-auto w-full">
+
+            <!-- PERSONA SWITCHER STRIP (PERMANENT TOP BAR) -->
+            <section class="glass-panel rounded-2xl p-4 border border-cyan-500/20 shadow-glass">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-cyanGlow"></i>
+                        <h2 class="font-bold text-sm tracking-wide uppercase text-slate-200">Holographic Personas</h2>
+                        <span class="text-xs text-slate-500">(Active Persona Directs Routing & Tone)</span>
+                    </div>
+                    <!-- PERSONA BUTTONS -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 w-full md:w-auto" id="persona-selector-grid">
+                        <!-- Dynamic Buttons inserted via JS -->
+                    </div>
+                </div>
+
+                <!-- SELECTED PERSONA INTERACTIVE DIALOGUE CARD -->
+                <div class="mt-4 pt-4 border-t border-slate-800/80 flex flex-col md:flex-row items-center gap-4 bg-slate-950/40 p-4 rounded-xl relative overflow-hidden">
+                    <div id="persona-glow-bg" class="absolute -right-10 -bottom-10 w-48 h-48 bg-cyanGlow/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="relative shrink-0">
+                        <div id="persona-avatar-container" class="w-16 h-16 rounded-2xl bg-cyan-950/80 border-2 border-cyanGlow flex items-center justify-center text-3xl shadow-neon-cyan transition-all">
+                            <i data-lucide="bot" class="w-8 h-8 text-cyanGlow" id="persona-avatar-icon"></i>
+                        </div>
+                        <span id="persona-badge-type" class="absolute -bottom-2 -right-1 text-[9px] font-mono px-1.5 py-0.5 bg-black border border-cyan-400 text-cyanGlow rounded">CORE</span>
+                    </div>
+                    <div class="flex-1 text-center md:text-left">
+                        <div class="flex flex-col md:flex-row md:items-center gap-2">
+                            <h3 id="persona-name" class="font-bold text-lg text-white">NOVA Prime</h3>
+                            <span id="persona-title" class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-500/30">Master Synthesizer & Primary Orchestrator</span>
+                        </div>
+                        <p id="persona-quote" class="text-sm text-slate-300 italic mt-1 font-sans">"Directing quantum intent across all operational nodes. How shall we innovate today?"</p>
+                        <div class="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-2 text-xs text-slate-400 font-mono">
+                            <span id="persona-voice">Voice Style: Balanced Executive AI</span>
+                            <span id="persona-focus">Focus: High-Level System Strategy & Task Allocation</span>
+                        </div>
+                    </div>
+                    <div class="shrink-0 flex gap-2">
+                        <button onclick="triggerPersonaDialogue()" class="px-3 py-2 rounded-lg text-xs font-mono bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-500/40 text-cyanGlow transition-all flex items-center gap-1.5">
+                            <i data-lucide="message-square-code" class="w-4 h-4"></i> Speak
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 1: DASHBOARD VIEW (SYSTEM HEALTH & COMMAND CENTER) -->
+            <div id="tab-dashboard" class="tab-content space-y-6">
+                <!-- METRIC CARDS -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glass-panel p-4 rounded-xl border-l-4 border-l-cyanGlow flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-mono text-slate-400">DEMO LATENCY (NOT LIVE)</p>
+                            <h3 class="text-2xl font-bold font-mono text-white mt-1" id="val-latency">Demo only</h3>
+                            <span class="text-[11px] text-emerald-400 flex items-center gap-1 mt-1">
+                                <i data-lucide="arrow-down" class="w-3 h-3"></i> Illustrative value — not measured
+                            </span>
+                        </div>
+                        <div class="p-3 bg-cyan-950/50 rounded-xl text-cyanGlow border border-cyan-500/30">
+                            <i data-lucide="zap" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-xl border-l-4 border-l-magentaGlow flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-mono text-slate-400">SECURITY STATUS (UNVERIFIED)</p>
+                            <h3 class="text-2xl font-bold font-mono text-white mt-1">NOT AUDITED LIVE</h3>
+                            <span class="text-[11px] text-magentaGlow flex items-center gap-1 mt-1">
+                                <i data-lucide="shield" class="w-3 h-3"></i> No live security scan has run
+                            </span>
+                        </div>
+                        <div class="p-3 bg-pink-950/50 rounded-xl text-magentaGlow border border-pink-500/30">
+                            <i data-lucide="shield-check" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-xl border-l-4 border-l-purpleGlow flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-mono text-slate-400">THROUGHPUT (DEMO ONLY)</p>
+                            <h3 class="text-2xl font-bold font-mono text-white mt-1" id="val-tokens">Not measured</h3>
+                            <span class="text-[11px] text-purple-300 flex items-center gap-1 mt-1">
+                                <i data-lucide="activity" class="w-3 h-3"></i> Live token metrics are not connected
+                            </span>
+                        </div>
+                        <div class="p-3 bg-purple-950/50 rounded-xl text-purpleGlow border border-purple-500/30">
+                            <i data-lucide="cpu" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-xl border-l-4 border-l-emerald-400 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-mono text-slate-400">STORAGE STATUS (UNVERIFIED)</p>
+                            <h3 class="text-2xl font-bold font-mono text-white mt-1">Not connected</h3>
+                            <span class="text-[11px] text-emerald-400 flex items-center gap-1 mt-1">
+                                <i data-lucide="database" class="w-3 h-3"></i> Encryption status requires server verification
+                            </span>
+                        </div>
+                        <div class="p-3 bg-emerald-950/50 rounded-xl text-emerald-400 border border-emerald-500/30">
+                            <i data-lucide="hard-drive" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LIVE BACKEND CONNECTION: values below come from actual API responses -->
+                <section class="glass-panel p-5 rounded-xl border border-cyan-500/30 space-y-3" aria-labelledby="backend-connection-title">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 id="backend-connection-title" class="font-bold text-white">NOVA Backend Connection</h2>
+                            <p class="text-xs text-slate-400 mt-1">Check a deployed NOVA server. Demo charts above are illustrative until connected to real telemetry.</p>
+                        </div>
+                        <span id="backend-connection-state" class="text-xs font-mono text-amber-300">NOT CHECKED</span>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input id="backend-base-url" type="url" inputmode="url" placeholder="https://your-nova-service.onrender.com" aria-label="NOVA backend base URL" class="min-w-0 flex-1 rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white" />
+                        <button id="backend-connect-button" type="button" onclick="checkNovaBackend()" class="rounded-lg bg-cyan-700 hover:bg-cyan-600 px-4 py-2 text-sm font-bold text-white">Test connection</button>
+                    </div>
+                    <p id="backend-connection-details" class="text-xs text-slate-300" role="status" aria-live="polite">No backend has been checked yet. The test reads /health and /api/self-test; it does not change server data.</p>
+                    <div id="backend-checks" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+                </section>
+
+                <!-- MIDDLE ROW: SYSTEM CHARTS & INTERACTIVE TOGGLES -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- CHART PANEL -->
+                    <div class="glass-panel lg:col-span-2 p-5 rounded-2xl border border-cyan-500/20">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="line-chart" class="w-5 h-5 text-cyanGlow"></i>
+                                <h3 class="font-bold text-base text-white">System Resource & Telemetry Streams</h3>
+                            </div>
+                            <span class="text-xs font-mono text-slate-400">Real-time sampling (1s)</span>
+                        </div>
+                        <div class="h-64 w-full">
+                            <canvas id="telemetryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- CONTROL PANEL TOGGLES -->
+                    <div class="glass-panel p-5 rounded-2xl border border-cyan-500/20 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 mb-4">
+                                <i data-lucide="sliders" class="w-5 h-5 text-magentaGlow"></i>
+                                <h3 class="font-bold text-base text-white">Command Center Controls</h3>
+                            </div>
+                            <div class="space-y-4 font-mono text-xs">
+                                <!-- TOGGLE ITEM -->
+                                <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                                    <div>
+                                        <p class="font-bold text-slate-200">Secure AI Router (v21.6.0)</p>
+                                        <p class="text-[10px] text-slate-400">Strict privacy & fallback routing</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked onchange="toggleModule('Secure Router', this.checked)" class="sr-only peer">
+                                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyanGlow"></div>
+                                    </label>
+                                </div>
+
+                                <!-- TOGGLE ITEM -->
+                                <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                                    <div>
+                                        <p class="font-bold text-slate-200">Guardian 21.4.4 Security Shield</p>
+                                        <p class="text-[10px] text-slate-400">Auto-block unverified system edits</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked onchange="toggleModule('Guardian Shield', this.checked)" class="sr-only peer">
+                                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-magentaGlow"></div>
+                                    </label>
+                                </div>
+
+                                <!-- TOGGLE ITEM -->
+                                <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                                    <div>
+                                        <p class="font-bold text-slate-200">Mobile Guard Accessibility</p>
+                                        <p class="text-[10px] text-slate-400">Android MainActivity / Service sync</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked onchange="toggleModule('Mobile Guard', this.checked)" class="sr-only peer">
+                                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purpleGlow"></div>
+                                    </label>
+                                </div>
+
+                                <!-- TOGGLE ITEM -->
+                                <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                                    <div>
+                                        <p class="font-bold text-slate-200">Autonomous Sandbox Mode</p>
+                                        <p class="text-[10px] text-slate-400">Execute code tasks in isolated runtime</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked onchange="toggleModule('Autonomous Sandbox', this.checked)" class="sr-only peer">
+                                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-400"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-800">
+                            <button onclick="triggerSystemAudit()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 via-purple-600 to-magentaGlow text-white font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-neon-cyan">
+                                <i data-lucide="shield-alert" class="w-4 h-4"></i> RUN COMPLETE SYSTEM AUDIT
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LIVE AUDIT / ALERT LOG -->
+                <div class="glass-panel p-5 rounded-2xl border border-cyan-500/20">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="terminal" class="w-5 h-5 text-emerald-400"></i>
+                            <h3 class="font-bold text-sm font-mono text-white">System Security & Telemetry Event Stream</h3>
+                        </div>
+                        <button onclick="clearLogs('dashboard-logs')" class="text-xs text-slate-400 hover:text-white font-mono">Clear Stream</button>
+                    </div>
+                    <div id="dashboard-logs" class="h-36 overflow-y-auto font-mono text-xs bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-1.5 text-slate-300">
+                        <p class="text-emerald-400">[SYSTEM INIT] NOVA Ultimate Ecosystem v21.6.0 core operational.</p>
+                        <p class="text-cyan-300">[ROUTER] Provider discovery active. 8 nodes connected.</p>
+                        <p class="text-purple-300">[CRYPTO] PersistentStore AES-256 keys validated successfully.</p>
+                        <p class="text-slate-400">[GUARDIAN] AccessControl rules enforced. Zero unauthorized escalations detected.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: CORE PRINCIPLE LIFECYCLE ENGINE -->
+            <div id="tab-lifecycle" class="tab-content hidden space-y-6">
+                <div class="glass-panel p-6 rounded-2xl border border-cyan-500/20">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i data-lucide="workflow" class="w-5 h-5 text-cyanGlow"></i>
+                                CORE PRINCIPLE EXECUTION ENGINE
+                            </h2>
+                            <p class="text-xs text-slate-400 font-mono mt-1">Understand → Plan → Execute → Verify → Improve</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="runLifecycleScenario('deploy')" class="px-3 py-2 rounded-xl bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-500/40 text-cyanGlow text-xs font-mono transition-all flex items-center gap-1.5">
+                                <i data-lucide="rocket" class="w-3.5 h-3.5"></i> Test: 'Deploy Code'
+                            </button>
+                            <button onclick="runLifecycleScenario('security')" class="px-3 py-2 rounded-xl bg-pink-950/80 hover:bg-pink-900/80 border border-pink-500/40 text-magentaGlow text-xs font-mono transition-all flex items-center gap-1.5">
+                                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Test: 'Security Audit'
+                            </button>
+                            <button onclick="runLifecycleScenario('mobile')" class="px-3 py-2 rounded-xl bg-purple-950/80 hover:bg-purple-900/80 border border-purple-500/40 text-purpleGlow text-xs font-mono transition-all flex items-center gap-1.5">
+                                <i data-lucide="smartphone" class="w-3.5 h-3.5"></i> Test: 'Build Mobile Feature'
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- LIFECYCLE PIPELINE VISUALIZATION -->
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 relative">
+                        <!-- STAGE 1: UNDERSTAND -->
+                        <div id="stage-understand" class="lifecycle-stage glass-panel p-4 rounded-xl border border-slate-800 transition-all text-center relative">
+                            <div class="stage-icon w-10 h-10 mx-auto rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 mb-2">
+                                <i data-lucide="brain-circuit" class="w-5 h-5"></i>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-200">1. UNDERSTAND</h4>
+                            <p class="text-[11px] text-slate-400 mt-1">Goal Parsing & Intent Recognition</p>
+                            <span class="stage-status text-[10px] font-mono px-2 py-0.5 mt-3 inline-block rounded bg-slate-800 text-slate-400">IDLE</span>
+                        </div>
+
+                        <!-- STAGE 2: PLAN -->
+                        <div id="stage-plan" class="lifecycle-stage glass-panel p-4 rounded-xl border border-slate-800 transition-all text-center relative">
+                            <div class="stage-icon w-10 h-10 mx-auto rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 mb-2">
+                                <i data-lucide="map" class="w-5 h-5"></i>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-200">2. PLAN</h4>
+                            <p class="text-[11px] text-slate-400 mt-1">Strategic Decomposition & Routing</p>
+                            <span class="stage-status text-[10px] font-mono px-2 py-0.5 mt-3 inline-block rounded bg-slate-800 text-slate-400">IDLE</span>
+                        </div>
+
+                        <!-- STAGE 3: EXECUTE -->
+                        <div id="stage-execute" class="lifecycle-stage glass-panel p-4 rounded-xl border border-slate-800 transition-all text-center relative">
+                            <div class="stage-icon w-10 h-10 mx-auto rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 mb-2">
+                                <i data-lucide="terminal" class="w-5 h-5"></i>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-200">3. EXECUTE</h4>
+                            <p class="text-[11px] text-slate-400 mt-1">Autonomous Builder & Sandbox Action</p>
+                            <span class="stage-status text-[10px] font-mono px-2 py-0.5 mt-3 inline-block rounded bg-slate-800 text-slate-400">IDLE</span>
+                        </div>
+
+                        <!-- STAGE 4: VERIFY -->
+                        <div id="stage-verify" class="lifecycle-stage glass-panel p-4 rounded-xl border border-slate-800 transition-all text-center relative">
+                            <div class="stage-icon w-10 h-10 mx-auto rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 mb-2">
+                                <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-200">4. VERIFY</h4>
+                            <p class="text-[11px] text-slate-400 mt-1">Guardian Validation & Test Execution</p>
+                            <span class="stage-status text-[10px] font-mono px-2 py-0.5 mt-3 inline-block rounded bg-slate-800 text-slate-400">IDLE</span>
+                        </div>
+
+                        <!-- STAGE 5: IMPROVE -->
+                        <div id="stage-improve" class="lifecycle-stage glass-panel p-4 rounded-xl border border-slate-800 transition-all text-center relative">
+                            <div class="stage-icon w-10 h-10 mx-auto rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 mb-2">
+                                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-200">5. IMPROVE</h4>
+                            <p class="text-[11px] text-slate-400 mt-1">Feedback Loop & Self-Optimization</p>
+                            <span class="stage-status text-[10px] font-mono px-2 py-0.5 mt-3 inline-block rounded bg-slate-800 text-slate-400">IDLE</span>
+                        </div>
+                    </div>
+
+                    <!-- REAL-TIME EXECUTION CONSOLE -->
+                    <div class="mt-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-mono text-cyanGlow flex items-center gap-2">
+                                <i data-lucide="cpu" class="w-4 h-4"></i> Pipeline Execution Telemetry & Step Logs
+                            </span>
+                            <span id="lifecycle-progress" class="text-xs font-mono text-slate-400">Ready to execute scenarios</span>
+                        </div>
+                        <div id="lifecycle-console" class="h-60 overflow-y-auto bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs space-y-2 text-slate-300">
+                            <p class="text-slate-500">// Select a test scenario above to activate the 5-step principle pipeline...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: AUTONOMOUS EXECUTOR & SANDBOX EXPLORER -->
+            <div id="tab-sandbox" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- REPOSITORY FILE TREE & MODULE EXPLORER -->
+                    <div class="glass-panel p-5 rounded-2xl border border-cyan-500/20 lg:col-span-1 flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                                <i data-lucide="folder-tree" class="w-4 h-4 text-cyanGlow"></i> NOVA Zip Repository Modules
+                            </h3>
+                            <span class="text-[10px] font-mono text-cyanGlow px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30">
+                                48 Files Detected
+                            </span>
+                        </div>
+                        
+                        <!-- FILE LIST -->
+                        <div class="space-y-1 font-mono text-xs overflow-y-auto max-h-[480px] pr-1" id="file-tree-list">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- MODULE INSPECTOR & SIMULATED RUNNER -->
+                    <div class="glass-panel p-5 rounded-2xl border border-cyan-500/20 lg:col-span-2 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-3">
+                                <div>
+                                    <h3 id="sandbox-filename" class="font-bold text-base font-mono text-cyanGlow flex items-center gap-2">
+                                        <i data-lucide="file-code" class="w-4 h-4"></i> agent-core.js
+                                    </h3>
+                                    <p id="sandbox-file-desc" class="text-xs text-slate-400 mt-0.5">Central agent orchestration engine & task planning interface.</p>
+                                </div>
+                                <button onclick="runSelectedSandboxModule()" class="px-4 py-2 rounded-xl bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-400/50 text-cyanGlow text-xs font-mono font-bold transition-all flex items-center gap-2 shadow-neon-cyan">
+                                    <i data-lucide="play" class="w-4 h-4 fill-cyanGlow"></i> RUN SIMULATED TASK
+                                </button>
+                            </div>
+
+                            <!-- CODE PREVIEW DISPLAY -->
+                            <div class="relative bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs h-64 overflow-y-auto" id="sandbox-code-preview">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- TEST SUITE PASSES MATRIX -->
+                        <div class="mt-4 pt-4 border-t border-slate-800">
+                            <h4 class="font-bold text-xs font-mono text-slate-300 mb-2 flex items-center gap-1.5">
+                                <i data-lucide="check-check" class="w-4 h-4 text-emerald-400"></i> Associated Test Suite Results
+                            </h4>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-[11px]" id="test-results-grid">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: CREATIVE STUDIO & CODE GENERATOR -->
+            <div id="tab-studio" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- PROMPT & CONTROLS (4 COLS) -->
+                    <div class="glass-panel p-5 rounded-2xl border border-cyan-500/20 lg:col-span-4 flex flex-col justify-between">
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="sparkles" class="w-5 h-5 text-magentaGlow"></i>
+                                <h3 class="font-bold text-base text-white">Creative Development Studio</h3>
+                            </div>
+                            <p class="text-xs text-slate-400">Generate, refactor, or build autonomous web templates with live syntax feedback and preview.</p>
+
+                            <!-- TEMPLATE QUICK SELECT -->
+                            <div>
+                                <label class="text-xs font-mono text-slate-300 block mb-1">Preset Archetype</label>
+                                <select id="studio-archetype" onchange="loadStudioPreset(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyanGlow">
+                                    <option value="widget">Holographic HUD Widget Component</option>
+                                    <option value="guard">Guardian Security Enforcer Logic</option>
+                                    <option value="android">Android Accessibility Bridge Script</option>
+                                </select>
+                            </div>
+
+                            <!-- PROMPT INPUT -->
+                            <div>
+                                <label class="text-xs font-mono text-slate-300 block mb-1">Generation Prompt</label>
+                                <textarea id="studio-prompt" rows="5" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-cyan-200 focus:outline-none focus:border-magentaGlow" placeholder="Describe the software component or module NOVA should build..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 space-y-2">
+                            <button onclick="generateStudioCode()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-magentaGlow to-purpleGlow text-white font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-neon-magenta">
+                                <i data-lucide="wand-2" class="w-4 h-4"></i> GENERATE CODE & SYNTHESIZE
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CODE EDITOR & PREVIEW PANELS (8 COLS) -->
+                    <div class="glass-panel p-5 rounded-2xl border border-cyan-500/20 lg:col-span-8 flex flex-col">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                            <div class="flex items-center gap-2">
+                                <button onclick="switchStudioView('editor')" id="btn-studio-editor" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-cyan-950 border border-cyan-500/40 text-cyanGlow">
+                                    Code Editor
+                                </button>
+                                <button onclick="switchStudioView('preview')" id="btn-studio-preview" class="px-3 py-1.5 rounded-lg text-xs font-mono text-slate-400 hover:text-white">
+                                    Instant Preview Mode
+                                </button>
+                            </div>
+                            <span class="text-xs font-mono text-slate-400" id="studio-status">Ready</span>
+                        </div>
+
+                        <!-- EDITOR VIEW -->
+                        <div id="studio-view-editor" class="flex-1 bg-slate-950 rounded-xl p-4 font-mono text-xs border border-slate-800 overflow-y-auto h-96">
+                            <pre id="studio-code-output" class="text-slate-200 whitespace-pre-wrap"><code>// Select an archetype or enter a custom prompt, then click 'GENERATE CODE & SYNTHESIZE'...</code></pre>
+                        </div>
+
+                        <!-- LIVE PREVIEW VIEW -->
+                        <div id="studio-view-preview" class="hidden flex-1 bg-slate-950/90 rounded-xl p-4 border border-slate-800 h-96 overflow-auto">
+                            <div id="preview-render-target" class="w-full h-full flex flex-col items-center justify-center">
+                                <p class="text-xs font-mono text-slate-500">Live rendered preview output will appear here...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="tab-evolution" class="tab-content hidden space-y-6">
+                <section class="glass-panel rounded-2xl p-6 border border-cyan-500/30 space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-mono text-cyan-300">NOVA CORE / VERSION 21.6.0</p>
+                            <h2 class="text-2xl font-bold text-white mt-1">Evolution Engine</h2>
+                            <p class="text-sm text-slate-300 mt-2">Understand → Learn → Evolve → Adapt → Verify → Improve</p>
+                        </div>
+                        <button type="button" onclick="checkNovaEvolution()" class="rounded-xl bg-cyan-700 hover:bg-cyan-600 px-4 py-2 text-sm font-bold text-white">Read live evolution status</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <article class="rounded-xl bg-slate-950/70 border border-slate-700 p-4"><h3 class="font-bold text-cyan-200">Learn from experience</h3><p class="text-xs text-slate-300 mt-2">Opt-in task outcomes and feedback signals; personal records stay tied to the authenticated account.</p></article>
+                        <article class="rounded-xl bg-slate-950/70 border border-slate-700 p-4"><h3 class="font-bold text-purple-200">Evaluate with evidence</h3><p class="text-xs text-slate-300 mt-2">Evaluations only pass when at least one check exists and every submitted check passes.</p></article>
+                        <article class="rounded-xl bg-slate-950/70 border border-slate-700 p-4"><h3 class="font-bold text-emerald-200">Evolve safely</h3><p class="text-xs text-slate-300 mt-2">Upgrade proposals require creator review and passing verification. This engine does not auto-edit or deploy production code.</p></article>
+                    </div>
+                    <div class="rounded-xl border border-slate-700 bg-slate-950 p-4">
+                        <div class="flex items-center justify-between gap-3"><h3 class="font-bold text-white">Backend evidence</h3><span id="evolution-status-pill" class="text-xs font-mono text-amber-300">NOT CHECKED</span></div>
+                        <p id="evolution-status-message" class="text-sm text-slate-300 mt-2" role="status" aria-live="polite">Connect the backend in the Dashboard tab, then request its live evolution status. This workspace alone does not train or evolve the underlying model.</p>
+                        <pre id="evolution-status-json" class="hidden mt-3 text-xs text-cyan-100 whitespace-pre-wrap overflow-auto max-h-72"></pre>
+                    </div>
+                </section>
+            </div>
+
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="glass-panel mt-6 px-6 py-3 border-t border-cyan-500/20 text-xs font-mono text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-cyanGlow animate-ping"></span>
+                <span>NOVA ULTIMATE ARCHITECTURE — QUANTUM AI ECOSYSTEM</span>
+            </div>
+            <div>
+                <span>CORE PRINCIPLE: <strong class="text-cyanGlow">Understand → Plan → Execute → Verify → Improve</strong></span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- APPLICATION LOGIC JS -->
+    <script>
+        // --- 1. PERSONA DATA & STATE ---
+        const PERSONAS = [
+            {
+                id: 'nova-prime',
+                name: 'NOVA Prime',
+                badge: 'CORE',
+                title: 'Master Synthesizer & Primary Orchestrator',
+                avatarIcon: 'bot',
+                color: '#00f0ff',
+                voice: 'Balanced Executive AI',
+                focus: 'High-Level System Strategy & Task Allocation',
+                quote: '"Directing quantum intent across all operational nodes. How shall we innovate today?"',
+                dialogue: [
+                    "Analyzing overarching ecosystem metrics. All neural sub-routines running at peak efficiency.",
+                    "Core orchestration channels open. Ready to initiate strategic execution sequence."
+                ]
+            },
+            {
+                id: 'architect',
+                name: 'Architect',
+                badge: 'BUILD',
+                title: 'Full-Stack Software Engine & Builder',
+                avatarIcon: 'code-2',
+                color: '#00ff9d',
+                voice: 'Precise Technical Engineer',
+                focus: 'Code Generation, API Specs & Full-Stack Sandbox',
+                quote: '"Structure dictates functionality. Let us write modular, high-performance code."',
+                dialogue: [
+                    "Builder Engine online. Ready to scaffold applications or generate clean component suites.",
+                    "Reviewing workspace dependencies... All code modules verified for sandbox execution."
+                ]
+            },
+            {
+                id: 'guardian',
+                name: 'Guardian',
+                badge: 'SEC',
+                title: 'Security Shield Enforcer & Threat Guard',
+                avatarIcon: 'shield',
+                color: '#ff007f',
+                voice: 'Commanding Security Enforcer',
+                focus: 'Access Control, Cryptography & Threat Mitigation',
+                quote: '"Permissions strictly enforced. No unauthorized logic shall pass verified boundaries."',
+                dialogue: [
+                    "Guardian 21.4.4 active. Zero unauthorized privilege escalations detected.",
+                    "AES-256 state encryption locked. System protection parameters operating at maximum defensive posture."
+                ]
+            },
+            {
+                id: 'synthesizer',
+                name: 'Synthesizer',
+                badge: 'DATA',
+                title: 'Multimodal Research & Telemetry Analyst',
+                avatarIcon: 'brain',
+                color: '#7000ff',
+                voice: 'Analytical Data Specialist',
+                focus: 'Telemetry Fusion, Analytics & Predictive Engine',
+                quote: '"Pattern recognition active across high-dimensional telemetry feeds."',
+                dialogue: [
+                    "Fusing telemetry streams across persistent store and live AI routing engines.",
+                    "Predictive engine indicates optimal task routing with minimal latency parameters."
+                ]
+            },
+            {
+                id: 'creative-nexus',
+                name: 'Creative Nexus',
+                badge: 'STUDIO',
+                title: 'Creative Studio Director & UI Visualizer',
+                avatarIcon: 'palette',
+                color: '#ff00d0',
+                voice: 'Expressive Creative Design Lead',
+                focus: 'Interactive Studio, Holographic HUDs & UX Design',
+                quote: '"Aesthetics and utility in perfect quantum alignment. Transforming concepts into visual reality."',
+                dialogue: [
+                    "Creative Studio initialized. Crafting responsive glassmorphic components and glowing HUD interfaces.",
+                    "Visual design tokens synced with cyan and magenta neon color spectrums."
+                ]
+            },
+            {
+                id: 'cyber-agent',
+                name: 'Cyber Agent',
+                badge: 'AUTO',
+                title: 'Autonomous Mobile & Workspace Execution Unit',
+                avatarIcon: 'terminal',
+                color: '#ffaa00',
+                voice: 'Tactical Cyber Specialist',
+                focus: 'Autonomous Execution, Android Bridge & Extension',
+                quote: '"Autonomous task loop engaged. Deploying background agents across connected devices."',
+                dialogue: [
+                    "Android accessibility service bridge linked. Ready to perform automated system actions.",
+                    "Autonomous agent cycle active. Task queue updated with verified test assertions."
+                ]
+            }
+        ];
+
+        let activePersona = PERSONAS[0];
+
+        // --- 2. REPOSITORY FILES & SANDBOX DATA ---
+        const REPO_FILES = [
+            {
+                name: 'agent-core.js',
+                path: 'core/agent-core.js',
+                desc: 'Central agent orchestration engine & task planner.',
+                code: `// agent-core.js — Master Agent Planning Loop
+const { AIRouter } = require('./ai-router');
+const { Guardian } = require('../security/guardian');
+
+class AgentCore {
+  constructor() {
+    this.router = new AIRouter();
+    this.guardian = new Guardian();
+  }
+
+  async executeTask(goal) {
+    console.log('[AgentCore] Goal received:', goal);
+    const validated = await this.guardian.auditTask(goal);
+    if(!validated) throw new Error('Task blocked by Security Guardian');
+    return await this.router.routeGoal(goal);
+  }
+}
+module.exports = { AgentCore };`,
+                tests: ['tests-central-ai-core.test.js', 'tests-universal-assistant.test.js']
+            },
+            {
+                name: 'builder-engine.js',
+                path: 'core/builder-engine.js',
+                desc: 'Autonomous code builder & project generator.',
+                code: `// builder-engine.js — Full-Stack Component Builder
+class BuilderEngine {
+  generateModule(spec) {
+    console.log('[BuilderEngine] Generating component archetype:', spec.type);
+    return {
+      status: 'SUCCESS',
+      generatedCode: \`<div class="hud-widget">\${spec.title}</div>\`,
+      timestamp: Date.now()
+    };
+  }
+}
+module.exports = { BuilderEngine };`,
+                tests: ['tests-builder-v14.test.js', 'tests-builder-v15.test.js']
+            },
+            {
+                name: 'guardian.js',
+                path: 'security/guardian.js',
+                desc: 'Security shield enforcer & authorization filter.',
+                code: `// guardian.js — NOVA Security Guardian 21.4.4
+class Guardian {
+  auditTask(task) {
+    if (task.includes('UNAUTHORIZED_ACCESS')) return false;
+    return { safe: true, threatLevel: 0.0 };
+  }
+}
+module.exports = { Guardian };`,
+                tests: ['tests-guardian.test.js', 'tests-access-control.test.js']
+            },
+            {
+                name: 'voice-engine.js',
+                path: 'core/voice-engine.js',
+                desc: 'Natural voice synthesis & audio stream engine.',
+                code: `// voice-engine.js — Holographic Voice Engine
+class VoiceEngine {
+  speak(text, persona) {
+    console.log(\`[VoiceEngine:\${persona}] Speaking: "\${text}"\`);
+    return { state: 'AUDIO_PLAYING', durationMs: 1800 };
+  }
+}
+module.exports = { VoiceEngine };`,
+                tests: ['tests-voice-engine.test.js', 'tests-voice-studio-camera.test.js']
+            },
+            {
+                name: 'MainActivity.kt',
+                path: 'android/app/.../MainActivity.kt',
+                desc: 'Android Native platform bridge & accessibility launcher.',
+                code: `// MainActivity.kt — Android Native Assistant
+package com.nova.ultimate
+
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        println("NOVA Android Native Bridge Active")
+    }
+}`,
+                tests: ['tests-access-control.test.js', 'MOBILE-ACCESSIBILITY.md']
+            }
+        ];
+
+        let selectedRepoFile = REPO_FILES[0];
+
+        // --- 3. INITIALIZATION & DOM RENDER ---
+        window.onload = function() {
+            lucide.createIcons();
+            renderPersonaButtons();
+            renderFileTree();
+            selectRepoFile(0);
+            initTelemetryChart();
+            startTelemetryUpdates();
+            loadStudioPreset('widget');
+        };
+
+        // --- PERSONA SWITCHER LOGIC ---
+        function renderPersonaButtons() {
+            const grid = document.getElementById('persona-selector-grid');
+            grid.innerHTML = PERSONAS.map(p => `
+                <button onclick="selectPersona('${p.id}')" id="pbtn-${p.id}" class="px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center gap-2 border ${p.id === activePersona.id ? 'bg-cyan-950 border-cyan400 text-cyanGlow shadow-neon-cyan' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white'}">
+                    <i data-lucide="${p.avatarIcon}" class="w-3.5 h-3.5" style="color: ${p.color}"></i>
+                    <span>${p.name}</span>
+                </button>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function selectPersona(id) {
+            activePersona = PERSONAS.find(p => p.id === id);
+            renderPersonaButtons();
+
+            // Update Persona Card UI
+            document.getElementById('persona-avatar-container').style.borderColor = activePersona.color;
+            document.getElementById('persona-avatar-icon').setAttribute('data-lucide', activePersona.avatarIcon);
+            document.getElementById('persona-avatar-icon').style.color = activePersona.color;
+            document.getElementById('persona-name').innerText = activePersona.name;
+            document.getElementById('persona-title').innerText = activePersona.title;
+            document.getElementById('persona-badge-type').innerText = activePersona.badge;
+            document.getElementById('persona-badge-type').style.color = activePersona.color;
+            document.getElementById('persona-quote').innerText = activePersona.quote;
+            document.getElementById('persona-voice').innerText = `Voice Style: ${activePersona.voice}`;
+            document.getElementById('persona-focus').innerText = `Focus: ${activePersona.focus}`;
+            document.getElementById('persona-glow-bg').style.backgroundColor = `${activePersona.color}20`;
+
+            lucide.createIcons();
+            addLog('dashboard-logs', `[UI MODE]: Active persona display switched to: ${activePersona.name} (${activePersona.title}); provider routing is not changed by this demo.`, 'text-cyanGlow');
+        }
+
+        function triggerPersonaDialogue() {
+            const dialogue = activePersona.dialogue[Math.floor(Math.random() * activePersona.dialogue.length)];
+            document.getElementById('persona-quote').innerText = `"${dialogue}"`;
+            addLog('dashboard-logs', `[SPEECH SYNTHESIS - ${activePersona.name}]: "${dialogue}"`, 'text-purpleGlow');
+        }
+
+
+        async function checkNovaEvolution() {
+            const baseInput = document.getElementById('backend-base-url');
+            const pill = document.getElementById('evolution-status-pill');
+            const message = document.getElementById('evolution-status-message');
+            const output = document.getElementById('evolution-status-json');
+            const base = String(baseInput?.value || '').trim().replace(/\/$/, '');
+            output.classList.add('hidden');
+            if (!base) {
+                pill.textContent = 'BACKEND URL REQUIRED';
+                pill.className = 'text-xs font-mono text-amber-300';
+                message.textContent = 'Enter your NOVA backend URL in the Dashboard tab first.';
+                return;
+            }
+            pill.textContent = 'CHECKING';
+            message.textContent = 'Requesting live status from /api/evolution/status…';
+            try {
+                const response = await fetch(`${base}/api/evolution/status`, { headers: { 'Accept': 'application/json' } });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || `Backend returned HTTP ${response.status}`);
+                pill.textContent = 'LIVE STATUS RECEIVED';
+                pill.className = 'text-xs font-mono text-emerald-300';
+                message.textContent = 'This response came from the connected backend. It reports recorded counters and capability limits; it is not proof of model retraining.';
+                output.textContent = JSON.stringify(data, null, 2);
+                output.classList.remove('hidden');
+            } catch (error) {
+                pill.textContent = 'CONNECTION FAILED';
+                pill.className = 'text-xs font-mono text-rose-300';
+                message.textContent = `${error.message || 'Could not read evolution status.'} Cross-origin requests may require NOVA_ALLOWED_ORIGINS on the server.`;
+            }
+        }
+
+        // --- TAB NAVIGATION ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white';
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            activeBtn.className = 'nav-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-cyanGlow bg-cyan-950/50 border border-cyan-500/30';
+        }
+
+        // --- 4. CORE PRINCIPLE LIFECYCLE ENGINE ---
+        let lifecycleRunning = false;
+        async function runLifecycleScenario(scenarioType) {
+            if(lifecycleRunning) return;
+            lifecycleRunning = true;
+
+            const stages = ['understand', 'plan', 'execute', 'verify', 'improve'];
+            const consoleEl = document.getElementById('lifecycle-console');
+            consoleEl.innerHTML = '';
+
+            const logs = {
+                deploy: [
+                    { stage: 'understand', text: '[UNDERSTAND] Parsing objective: Deploy production release zip to staging server.', status: 'COMPLETED' },
+                    { stage: 'plan', text: '[PLAN] Generating dependency graph. AIRouter allocating build nodes & Guardian check.', status: 'PLANNED' },
+                    { stage: 'execute', text: '[EXECUTE] BuilderEngine compiling package & running automated web workers.', status: 'EXECUTED' },
+                    { stage: 'verify', text: '[VERIFY] Running test suite: tests-builder-v15.test.js — ALL PASS.', status: 'VERIFIED' },
+                    { stage: 'improve', text: '[IMPROVE] Optimizing bundle caching parameters for future deployment pipelines.', status: 'OPTIMIZED' }
+                ],
+                security: [
+                    { stage: 'understand', text: '[UNDERSTAND] Goal: Full security audit & crypto key rotation.', status: 'COMPLETED' },
+                    { stage: 'plan', text: '[PLAN] Mapping security perimeter across Guardian 21.4.4 & Access Control rules.', status: 'PLANNED' },
+                    { stage: 'execute', text: '[EXECUTE] Re-encrypting Persistent Store keys with AES-256-GCM.', status: 'EXECUTED' },
+                    { stage: 'verify', text: '[VERIFY] Validating tests-security-hardening.test.js & tests-access-control.', status: 'VERIFIED' },
+                    { stage: 'improve', text: '[IMPROVE] Threat ruleset updated with zero security vulnerabilities.', status: 'OPTIMIZED' }
+                ],
+                mobile: [
+                    { stage: 'understand', text: '[UNDERSTAND] Goal: Synchronize Android Mobile Guard Accessibility service.', status: 'COMPLETED' },
+                    { stage: 'plan', text: '[PLAN] Constructing MainActivity bridge & Kotlin background service pipeline.', status: 'PLANNED' },
+                    { stage: 'execute', text: '[EXECUTE] Building Native Accessibility XML configs & background tasks.', status: 'EXECUTED' },
+                    { stage: 'verify', text: '[VERIFY] Mobile Accessibility service validated across simulated Android node.', status: 'VERIFIED' },
+                    { stage: 'improve', text: '[IMPROVE] Latency reduced by 14% on device touch event handling.', status: 'OPTIMIZED' }
+                ]
+            };
+
+            // Reset UI stages
+            stages.forEach(s => {
+                const el = document.getElementById(`stage-${s}`);
+                el.className = 'lifecycle-stage glass-panel p-4 rounded-xl border border-slate-800 transition-all text-center relative';
+                el.querySelector('.stage-status').innerText = 'PENDING';
+                el.querySelector('.stage-status').className = 'stage-status text-[10px] font-mono px-2 py-0.5 mt-3 inline-block rounded bg-slate-800 text-slate-400';
+            });
+
+            const stepLogs = logs[scenarioType];
+
+            for(let i = 0; i < stepLogs.length; i++) {
+                const step = stepLogs[i];
+                const stageEl = document.getElementById(`stage-${step.stage}`);
+                
+                // Highlight active
+                stageEl.className = 'lifecycle-stage glass-panel p-4 rounded-xl border border-cyanGlow shadow-neon-cyan transition-all text-center relative animate-pulse';
+                stageEl.querySelector('.stage-status').innerText = 'IN PROGRESS';
+                stageEl.querySelector('.stage-status').className = 'stage-status text-[10px] font-mono px-2 py-0.5 mt-3 inline-block rounded bg-cyan-950 text-cyanGlow border border-cyan-500/40';
+
+                // Log to console
+                const p = document.createElement('p');
+                p.className = 'text-cyan-300 font-mono';
+                p.innerText = `> ${step.text}`;
+                consoleEl.appendChild(p);
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+
+                document.getElementById('lifecycle-progress').innerText = `Active Stage: ${step.stage.toUpperCase()}`;
+
+                await new Promise(r => setTimeout(r, 900));
+
+                // Mark completed
+                stageEl.className = 'lifecycle-stage glass-panel p-4 rounded-xl border border-emerald-500/50 transition-all text-center relative';
+                stageEl.querySelector('.stage-status').innerText = step.status;
+                stageEl.querySelector('.stage-status').className = 'stage-status text-[10px] font-mono px-2 py-0.5 mt-3 inline-block rounded bg-emerald-950 text-emerald-400 border border-emerald-500/40';
+            }
+
+            document.getElementById('lifecycle-progress').innerText = 'Scenario Execution Complete (Verify & Improve Succeeded)';
+            lifecycleRunning = false;
+        }
+
+        // --- 5. SANDBOX & REPOSITORY MODULES ---
+        function renderFileTree() {
+            const list = document.getElementById('file-tree-list');
+            list.innerHTML = REPO_FILES.map((f, index) => `
+                <div onclick="selectRepoFile(${index})" class="p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between ${f.name === selectedRepoFile.name ? 'bg-cyan-950/80 border-cyan-500/50 text-cyanGlow' : 'bg-slate-900/40 border-slate-800/80 text-slate-300 hover:bg-slate-800/50'}">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-3.5 h-3.5 text-cyanGlow"></i>
+                        <span>${f.name}</span>
+                    </div>
+                    <span class="text-[9px] text-slate-500">${f.path.split('/')[0]}</span>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function selectRepoFile(index) {
+            selectedRepoFile = REPO_FILES[index];
+            renderFileTree();
+
+            document.getElementById('sandbox-filename').innerText = selectedRepoFile.name;
+            document.getElementById('sandbox-file-desc').innerText = selectedRepoFile.desc;
+            
+            // Format code simple sim
+            document.getElementById('sandbox-code-preview').innerHTML = `<pre class="text-cyan-300"><code>${escapeHtml(selectedRepoFile.code)}</code></pre>`;
+
+            // Render test pass badges
+            const testsGrid = document.getElementById('test-results-grid');
+            testsGrid.innerHTML = selectedRepoFile.tests.map(t => `
+                <div class="p-2 rounded-lg bg-emerald-950/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-between">
+                    <span class="truncate">${t}</span>
+                    <i data-lucide="check" class="w-3 h-3 shrink-0"></i>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function runSelectedSandboxModule() {
+            addLog('dashboard-logs', `[DEMO ONLY]: Simulating a sandbox run for ${selectedRepoFile.name}; no container is connected.`, 'text-cyanGlow');
+            setTimeout(() => {
+                addLog('dashboard-logs', `[DEMO ONLY]: ${selectedRepoFile.name} simulation finished. No code was executed and no assertions were run.`, 'text-emerald-400');
+                alert(`Demo simulation for ${selectedRepoFile.name} finished; no real sandbox execution occurred.`);
+            }, 600);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // --- 6. CREATIVE STUDIO ---
+        const STUDIO_PRESETS = {
+            widget: {
+                prompt: 'Create a futuristic glassmorphic HUD status card with pulsing glow border.',
+                code: `<div class="p-4 rounded-2xl bg-slate-900/80 border border-cyan-400 text-white shadow-neon-cyan">
+  <div class="flex justify-between items-center">
+    <h4 class="font-mono text-xs font-bold text-cyanGlow">HUD STATUS NODE</h4>
+    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+  </div>
+  <p class="text-xs text-slate-300 mt-2">Quantum link synced with persistent store.</p>
+</div>`
+            },
+            guard: {
+                prompt: 'Generate Security Guardian permission check policy logic.',
+                code: `// Guardian Policy Module
+function verifyAccessControl(userToken, targetResource) {
+  const isAuthorized = userToken && targetResource.securityLevel <= 3;
+  return {
+    granted: isAuthorized,
+    timestamp: new Date().toISOString(),
+    guardianSignature: "GUARDIAN_21.4.4_SECURE"
+  };
+}`
+            },
+            android: {
+                prompt: 'Generate Android Accessibility Service event handler snippet.',
+                code: `class NovaAccessibilityService : AccessibilityService() {
+    override onAccessibilityEvent(event: AccessibilityEvent) {
+        val packageName = event.packageName?.toString()
+        Log.d("NOVA_MOBILE", "Event intercepted from: $packageName")
+    }
+}`
+            }
+        };
+
+        function loadStudioPreset(key) {
+            const preset = STUDIO_PRESETS[key];
+            if(preset) {
+                document.getElementById('studio-prompt').value = preset.prompt;
+                document.getElementById('studio-code-output').innerText = preset.code;
+            }
+        }
+
+        function generateStudioCode() {
+            document.getElementById('studio-status').innerText = 'Synthesizing with Creative Nexus...';
+            setTimeout(() => {
+                document.getElementById('studio-status').innerText = 'Generated & Validated';
+                document.getElementById('preview-render-target').innerHTML = document.getElementById('studio-code-output').innerText;
+                addLog('dashboard-logs', '[CREATIVE STUDIO]: Component synthesized and validated in preview mode.', 'text-magentaGlow');
+            }, 500);
+        }
+
+        function switchStudioView(view) {
+            if(view === 'editor') {
+                document.getElementById('studio-view-editor').classList.remove('hidden');
+                document.getElementById('studio-view-preview').classList.add('hidden');
+                document.getElementById('btn-studio-editor').className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-cyan-950 border border-cyan-500/40 text-cyanGlow';
+                document.getElementById('btn-studio-preview').className = 'px-3 py-1.5 rounded-lg text-xs font-mono text-slate-400 hover:text-white';
+            } else {
+                document.getElementById('studio-view-editor').classList.add('hidden');
+                document.getElementById('studio-view-preview').classList.remove('hidden');
+                document.getElementById('preview-render-target').innerHTML = document.getElementById('studio-code-output').innerText;
+                document.getElementById('btn-studio-preview').className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-cyan-950 border border-cyan-500/40 text-cyanGlow';
+                document.getElementById('btn-studio-editor').className = 'px-3 py-1.5 rounded-lg text-xs font-mono text-slate-400 hover:text-white';
+            }
+        }
+
+        // --- 7. TELEMETRY & SYSTEM HEALTH ---
+        let telemetryChart;
+        function initTelemetryChart() {
+            const ctx = document.getElementById('telemetryChart').getContext('2d');
+            telemetryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['12:00', '12:01', '12:02', '12:03', '12:04', '12:05'],
+                    datasets: [
+                        {
+                            label: 'Demo CPU (%) — simulated',
+                            data: [18, 22, 19, 25, 21, 24],
+                            borderColor: '#00f0ff',
+                            backgroundColor: 'rgba(0, 240, 255, 0.08)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Demo Memory (MB) — simulated',
+                            data: [320, 340, 310, 350, 330, 345],
+                            borderColor: '#ff007f',
+                            backgroundColor: 'rgba(255, 0, 127, 0.08)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { family: 'monospace', size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function startTelemetryUpdates() {
+            setInterval(() => {
+                if(!telemetryChart) return;
+                const now = new Date().toLocaleTimeString();
+                telemetryChart.data.labels.shift();
+                telemetryChart.data.labels.push(now);
+
+                const newCpu = Math.floor(Math.random() * 15) + 15;
+                const newMem = Math.floor(Math.random() * 40) + 320;
+
+                telemetryChart.data.datasets[0].data.shift();
+                telemetryChart.data.datasets[0].data.push(newCpu);
+                telemetryChart.data.datasets[1].data.shift();
+                telemetryChart.data.datasets[1].data.push(newMem);
+
+                telemetryChart.update('none');
+
+                // Intentionally do not present simulated chart values as live latency or token throughput.
+            }, 2500);
+        }
+
+        // --- REAL BACKEND CONNECTION CHECKS ---
+        async function checkNovaBackend() {
+            const input = document.getElementById('backend-base-url');
+            const state = document.getElementById('backend-connection-state');
+            const details = document.getElementById('backend-connection-details');
+            const checks = document.getElementById('backend-checks');
+            const button = document.getElementById('backend-connect-button');
+            let base;
+            try {
+                base = new URL(input.value.trim());
+                if (!['http:', 'https:'].includes(base.protocol)) throw new Error('Use an http or https URL.');
+                if (base.username || base.password) throw new Error('Do not put credentials in the URL.');
+            } catch (error) {
+                state.innerText = 'INVALID URL';
+                details.innerText = error.message || 'Enter a valid backend URL.';
+                checks.replaceChildren();
+                return;
+            }
+            base.pathname = base.pathname.replace(/\/+$/, '');
+            base.search = '';
+            base.hash = '';
+            button.disabled = true;
+            button.innerText = 'Checking…';
+            state.innerText = 'CHECKING';
+            details.innerText = 'Contacting the backend. Cross-origin requests may require NOVA_ALLOWED_ORIGINS on the server.';
+            checks.replaceChildren();
+            const results = [];
+            for (const path of ['/health', '/api/self-test']) {
+                try {
+                    const response = await fetch(new URL(`${base.pathname}${path}`, base.origin), { method: 'GET', headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+                    const data = await response.json();
+                    results.push({ path, ok: response.ok && (path !== '/api/self-test' || data.ok === true), status: response.status, data });
+                } catch (error) {
+                    results.push({ path, ok: false, error: error.name === 'TypeError' ? 'Network/CORS error or server unreachable' : error.message });
+                }
+            }
+            for (const item of results) {
+                const card = document.createElement('div');
+                card.className = `rounded-lg border p-3 text-xs ${item.ok ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-rose-500/40 bg-rose-950/30 text-rose-300'}`;
+                const heading = document.createElement('strong');
+                heading.textContent = `${item.path}: ${item.ok ? 'PASS' : 'NOT VERIFIED'}`;
+                const line = document.createElement('p');
+                line.className = 'mt-1 break-words';
+                line.textContent = item.error || `HTTP ${item.status}${item.data?.version ? ` • version ${item.data.version}` : ''}`;
+                card.append(heading, line);
+                checks.append(card);
+            }
+            const allOk = results.every(item => item.ok);
+            state.innerText = allOk ? 'CONNECTED • CHECKS PASS' : 'PARTIAL / FAILED';
+            details.innerText = allOk
+                ? 'The server responded and its self-test reported success. This is not a penetration test or a guarantee of overall security.'
+                : 'Connection was partial or one check failed. Review each result; a CORS/network failure does not prove the server is offline.';
+            button.disabled = false;
+            button.innerText = 'Test connection';
+        }
+
+        // --- UTILS & TOGGLES ---
+        function toggleModule(name, state) {
+            addLog('dashboard-logs', `[SYSTEM CONTROL]: ${name} toggled -> ${state ? 'ENABLED' : 'DISABLED'}`, state ? 'text-emerald-400' : 'text-magentaGlow');
+        }
+
+        function toggleVoiceSim() {
+            const vText = document.getElementById('voice-text');
+            if(vText.innerText === 'VOICE LIVE') {
+                vText.innerText = 'VOICE MUTED';
+                document.getElementById('voice-indicator').className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700 text-xs font-mono text-slate-400 cursor-pointer';
+            } else {
+                vText.innerText = 'VOICE LIVE';
+                document.getElementById('voice-indicator').className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs font-mono text-emerald-400 cursor-pointer';
+            }
+        }
+
+        function triggerSystemAudit() {
+            addLog('dashboard-logs', '[SYSTEM AUDIT]: Initiating security check across all 48 repo modules...', 'text-cyanGlow');
+            setTimeout(() => {
+                addLog('dashboard-logs', '[DEMO ONLY]: This workspace cannot certify live security integrity. Connect a backend and run its actual checks.', 'text-emerald-400');
+            }, 800);
+        }
+
+        function addLog(containerId, text, colorClass = 'text-slate-300') {
+            const container = document.getElementById(containerId);
+            if(!container) return;
+            const p = document.createElement('p');
+            p.className = `${colorClass} font-mono`;
+            p.innerText = `[${new Date().toLocaleTimeString()}] ${text}`;
+            container.appendChild(p);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearLogs(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+    </script>
+</body>
+</html>

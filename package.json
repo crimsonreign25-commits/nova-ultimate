@@ -1,18 +1,19 @@
 {
   "name": "nova-ultimate",
-  "version": "21.5.0",
-  "description": "NOVA Ultimate with encrypted server-side data storage, privacy-aware AI routing, and hardened web/API defaults.",
+  "version": "21.6.0",
+  "description": "NOVA Ultimate with evidence-led evolution, opt-in feedback, verification-gated upgrade proposals, encrypted storage, and privacy-aware AI routing.",
   "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node --test tests-security-encryption.test.js tests-router-privacy.test.js tests-security-hardening.test.js && node tests-adaptive-recovery.test.js && node tests-autonomous-v13.test.js && node tests-builder-v15-unit.test.js && node tests-ai-router.test.js && node tests-ai-task-router.test.js && node tests-provider-discovery.test.js && node tests-voice-engine.test.js && node tests-persistent-v21.test.js && node tests-code-generator.test.js && node tests-universal-assistant.test.js && node --test tests-voice-studio-camera.test.js tests-chat-composer.test.js && node --test tests-access-control.test.js && node --test tests-creator-identity.test.js && node --test tests-private-ownership.test.js && node --test tests-creative-studio.test.js && node --test tests-guardian.test.js",
+    "test": "node --test tests-evolution-engine.test.js && node --test tests-central-ai-core.test.js && node --test tests-security-encryption.test.js tests-router-privacy.test.js tests-security-hardening.test.js && node tests-adaptive-recovery.test.js && node tests-autonomous-v13.test.js && node tests-builder-v15-unit.test.js && node tests-ai-router.test.js && node tests-ai-task-router.test.js && node tests-provider-discovery.test.js && node tests-voice-engine.test.js && node tests-persistent-v21.test.js && node tests-code-generator.test.js && node tests-universal-assistant.test.js && node --test tests-voice-studio-camera.test.js tests-chat-composer.test.js && node --test tests-access-control.test.js && node --test tests-creator-identity.test.js && node --test tests-private-ownership.test.js && node --test tests-creative-studio.test.js && node --test tests-guardian.test.js",
     "test:discovery": "node tests-provider-discovery.test.js",
     "test:creator-identity": "node --test tests-creator-identity.test.js",
-    "test:syntax": "node --check index.js && node --check core/secure-store-crypto.js && node --check tests-security-encryption.test.js && node --check tests-router-privacy.test.js && node --check tests-security-hardening.test.js && node --check security/guardian.js && node --check core/agent-core.js && node --check core/autonomous-executor.js && node --check core/builder-engine.js && node --check core/job-engine.js && node --check core/recovery-engine.js && node --check core/tool-registry.js && node --check core/workspace-manager.js && node --check public/app.js && node --check core/access-control.js && node --check core/creative-studio.js",
+    "test:syntax": "node --check index.js && node --check core/nova-ai-core.js && node --check core/secure-store-crypto.js && node --check tests-security-encryption.test.js && node --check tests-router-privacy.test.js && node --check tests-security-hardening.test.js && node --check security/guardian.js && node --check core/agent-core.js && node --check core/autonomous-executor.js && node --check core/builder-engine.js && node --check core/job-engine.js && node --check core/recovery-engine.js && node --check core/tool-registry.js && node --check core/workspace-manager.js && node --check public/app.js && node --check core/access-control.js && node --check core/creative-studio.js && node --check core/evolution-engine.js && node --check tests-evolution-engine.test.js",
     "test:voice-studio-camera": "node --test tests-voice-studio-camera.test.js",
     "test:chat-composer": "node --test tests-chat-composer.test.js",
-    "test:guardian": "node --test tests-guardian.test.js"
+    "test:guardian": "node --test tests-guardian.test.js",
+    "test:evolution": "node --test tests-evolution-engine.test.js"
   },
   "dependencies": {
     "express": "^4.18.2",

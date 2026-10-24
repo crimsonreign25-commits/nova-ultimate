@@ -33,8 +33,8 @@ test('notifications and device records are scoped to verified account identity',
 test('service worker never caches private API or assistant responses', async () => {
   const sw = await readFile(new URL('./public/sw.js', import.meta.url), 'utf8');
   assert.match(sw, /url\.pathname\.startsWith\('\/api\/'\)/);
-  assert.match(sw, /\['\/assist','\/research','\/scan-url','\/predict','\/health'\]\.includes\(url\.pathname\)/);
-  assert.match(sw, /url\.origin!==self\.location\.origin/);
+  assert.match(sw, /\[\s*'\/assist',\s*'\/research',\s*'\/scan-url',\s*'\/predict',\s*'\/health'\s*\]\.includes\(url\.pathname\)/);
+  assert.match(sw, /url\.origin\s*!==\s*self\.location\.origin/);
 });
 
 test('consequential action plans require verified accounts and server-derived identity', () => {

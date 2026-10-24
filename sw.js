@@ -1,5 +1,5 @@
-const CACHE='nova-v21.5.0-encrypted-router';
-const ASSETS=['/','/index.html','/styles.css?v=21.5.0-encrypted-router','/app.js?v=21.5.0-encrypted-router','/manifest.webmanifest'];
+const CACHE='nova-v21.6.0-quantum-core';
+const ASSETS=['/','/index.html','/styles.css?v=21.6.0-quantum-core','/app.js?v=21.6.0-quantum-core','/manifest.webmanifest'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{

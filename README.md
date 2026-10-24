@@ -1,4 +1,4 @@
-# NOVA Ultimate v16
+# NOVA Ultimate v21.6.0
 
 NOVA Ultimate is an open, guest-first next-generation AI assistant foundation. It combines multimodal chat, web research, voice/camera interfaces, autonomous planning and execution, adaptive recovery, sandboxed software development, persistent job/workspace state, verification, rollback, and artifact packaging.
 
@@ -128,6 +128,18 @@ The default speech path uses the browser/device native Speech Synthesis API and 
 Run `npm run test:syntax`, `npm test`, and `npm run test:creator-identity` before deployment. Runtime testing with configured Supabase/provider credentials and real device permissions is still required for release sign-off.
 
 
-## Secure deployment note (21.5.0)
+## Secure deployment note (21.6.0)
 
-For production, configure `NOVA_DATA_ENCRYPTION_KEY` as a 64-character hexadecimal secret before starting NOVA. See `.env.example` and `RELEASE-21.5.0-SECURE-ROUTER.md`. Keep the key outside source control and back it up; losing it prevents decryption of stored data. Cloud AI providers receive prompts and attachments submitted for processing unless `NOVA_EXTERNAL_AI_ENABLED=false`.
+For production, configure `NOVA_DATA_ENCRYPTION_KEY` as a 64-character hexadecimal secret before starting NOVA. See `.env.example` and `RELEASE-21.5.0-SECURE-ROUTER.md (historical baseline)`. Keep the key outside source control and back it up; losing it prevents decryption of stored data. Cloud AI providers receive prompts and attachments submitted for processing unless `NOVA_EXTERNAL_AI_ENABLED=false`.
+
+
+## NOVA Ultimate workspace and audit notes
+
+- `NOVA-ULTIMATE-WORKSPACE.html` is a standalone command-center demo. Its charts and persona dialogue are demonstrations, not live telemetry or a live AI connection. Use its Backend Connection panel to test `/health` and `/api/self-test` on a server you control.
+- `NOVA-ULTIMATE-AUDIT-AND-NEXT-STEPS.md` records the initial inspection, fixes, verification limits, and staged plan.
+- A successful `/api/self-test` is a local application self-check, not a penetration test or proof of absolute security.
+
+
+## NOVA Evolution Engine (v21.6.0)
+
+See [NOVA-EVOLUTION-ENGINE.md](./NOVA-EVOLUTION-ENGINE.md) for the evidence-led learning/evolution APIs, explicit opt-in storage, evaluation gates, creator-reviewed upgrade proposals, and test commands. NOVA does not claim underlying-model retraining or automatic production deployment.

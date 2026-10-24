@@ -1,10 +1,10 @@
 
-const CACHE = 'nova-v21.5.1';
+const CACHE = 'nova-v21.6.0-quantum-core';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=21.5.1',
-  '/app.js?v=21.5.1',
+  '/styles.css?v=21.6.0-quantum-core',
+  '/app.js?v=21.6.0-quantum-core',
   '/manifest.webmanifest'
 ];
 
